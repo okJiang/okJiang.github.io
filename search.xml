@@ -1,6 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>2022年终总结</title>
+    <url>/2023/01/01/2022%E5%B9%B4%E7%BB%88%E6%80%BB%E7%BB%93/</url>
+    <content><![CDATA[<p>第一次写年终总结呀，尝试记录一下。一年下来还真发生了不少事。看看自己有啥收获有啥成长。</p>
+<h2 id="工作"><a href="#工作" class="headerlink" title="工作"></a>工作</h2><p>先说说工作吧。从南大毕业后，我去了 PingCAP（贵司）工作，现在在贵司的 DM（Data Migration）团队工作，差不多就在数据导入、数据迁移以及其对应的云上版本这些地方搬砖。去年就有在贵司实习，主要在维护 DM，也就是怎么把一条 binlog 写到下游 TiDB 里面，和 MySQL binlog 打交道比较多。今年入职后，顺应公司的战略，主要在 tidbcloud.com 上 CRUD，帮助用户在 cloud 上导入或迁移数据，和 k8s、CRUD 以及用户体验打交道比较多。</p>
+<p>简单总结一下学到的东西吧，从实习到现在：</p>
+<ol>
+<li>单元测试、集成测试</li>
+<li>多线程代码</li>
+<li>review 代码</li>
+<li>写设计文档</li>
+<li>理解一个需求是任何工作的第一步</li>
+<li>对一个需求进行项目管理，以尽可能地按时交付（当然现在还做的不够好。。。）</li>
+<li>学习了 K8s/CRD/Operator/AWS/Pulumi 相关的知识，能看懂代码，并编写简单的代码</li>
+<li>更多地考虑用户体验</li>
+</ol>
+<p>再谈谈工作的感受。对于我这第一份正式的工作，我是非常满意我当前的团队和公司的。不论是公司还是团队内，大佬非常多，可以在他们身上学到很多东西。虽然很多人诟病贵司已经不是以前的贵司了，当然，公司的变化对于</p>
+<h2 id="学生生涯"><a href="#学生生涯" class="headerlink" title="学生生涯"></a>学生生涯</h2><p>今年终于从硕士毕业了。坦诚地对硕士这三年做个简短的总结吧。自己在三年中几乎没有任何的成果，连一篇论文都没发过，在科研这条路上，我确实算的上是彻底失败了。不过这三年，非常惭愧硕士期间真的没有学到科研的精髓。比较幸运的是，我在研一下就意识到了自己不适合走科研这条路</p>
+<ul>
+<li>工作</li>
+<li>生活</li>
+<li>爱情</li>
+<li>家庭</li>
+<li></li>
+</ul>
+]]></content>
+      <categories>
+        <category>年终总结</category>
+      </categories>
+      <tags>
+        <tag>生活</tag>
+        <tag>工作</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>hello-world</title>
     <url>/2023/01/01/hello-world-1/</url>
     <content><![CDATA[]]></content>
