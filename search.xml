@@ -34,18 +34,4 @@
         <tag>工作</tag>
       </tags>
   </entry>
-  <entry>
-    <title>hello-world</title>
-    <url>/2023/01/01/hello-world-1/</url>
-    <content><![CDATA[]]></content>
-      <categories>
-        <category>分类1</category>
-        <category>分类2</category>
-      </categories>
-      <tags>
-        <tag>标签1</tag>
-        <tag>标签2</tag>
-        <tag>标签3</tag>
-      </tags>
-  </entry>
 </search>
