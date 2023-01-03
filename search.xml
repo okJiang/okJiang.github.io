@@ -109,6 +109,58 @@
       </tags>
   </entry>
   <entry>
+    <title>DM 数据旅程 00：序言</title>
+    <url>/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2000%EF%BC%9A%E5%BA%8F%E8%A8%80/</url>
+    <content><![CDATA[<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>在此之前已经有官方很多关于 DM 的优秀文章了，比如</p>
+<ul>
+<li><a href="https://pingcap.com/zh/blog/tidb-ecosystem-tools-3">TiDB Ecosystem Tools 原理解读系列（三）TiDB Data Migration 架构设计与实现原理</a></li>
+<li><a href="https://pingcap.com/zh/blog?tag=DM%20%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB">DM 源码解读</a></li>
+</ul>
+<p>这些文章从原理方面非常详尽地介绍了 DM 的相关功能，是非常好的学习资料。但是</p>
+<span id="more"></span>
+
+<ul>
+<li>它讲述的内容跨度较大，对读者有一定的门槛，<a href="https://pingcap.com/zh/blog/dm-source-code-reading-1#%E8%83%8C%E6%99%AF%E7%9F%A5%E8%AF%86">DM 源码阅读系列文章（一）序：背景知识</a></li>
+<li>编辑时间太过久远，已经过去两年多了。DM 新增了一些新特性，对很多旧功能也进行了更新优化。所以原文中有很多内容已经过时（但大部分仍有参考价值）。例如：<a href="https://github.com/pingcap/dm/pull/540">DM 使用 Dumpling 替换了 MyDumper</a>，<a href="https://github.com/pingcap/dm/pull/568">新增乐观模式</a>等等。</li>
+</ul>
+<p>而外部的文章则大部分集中在 DM 的使用上而不是实现上。</p>
+<p>基于此，我想开一个坑《DM 数据旅程系列》，每一篇文章将以一个个小功能为线索，带大家理解 DM 中的各种实现。如果要讲的功能太大，也会拆分成小模块放出。每一步都会尽量放出 GitHub 地址，方便大家跟踪学习～</p>
+<blockquote>
+<p>数据旅程出自于龙少 PPT 中提到的用户旅程和数据旅程，指我们可以通过数据（字节）传输的途径。在看一段代码时，我们可以思考这个字节是从哪里来的，到哪里去，作用是什么，通过理解数据旅程来理解整个产品它的深层原理，并且可以通过改变数据规模（提升/降低数据数量级）和场景（不同的时间不同的位置）来理解产品的缺点（bug）。</p>
+</blockquote>
+<blockquote>
+<p>以上都是个人拙见（废话），欢迎提意见～</p>
+</blockquote>
+<p>当然，现在的 DM 正在飞速的发展迭代中，本系列的内容也可能马上就会过时，现在是 2021 年 10 月 31 日，本系列文章预计将会覆盖 DM v5.3.0-vx.x.x 的代码逻辑。</p>
+<p>如果认为文章中有任何可以改进的地方， 欢迎大家提出自己的想法。同样地，因为 DM 还在快速迭代，还有很多地方都有改进的地方，如果大家对代码实现有任何疑问，也都可以去 <a href="https://github.com/pingcap/ticdc/tree/master/dm">repo</a> 中直接提 issue。</p>
+<h2 id="读者要求"><a href="#读者要求" class="headerlink" title="读者要求"></a>读者要求</h2><ul>
+<li>能看懂 Golang 语法</li>
+<li>了解 grpc、etcd</li>
+</ul>
+<h2 id="计划章节"><a href="#计划章节" class="headerlink" title="计划章节"></a>计划章节</h2><ol>
+<li>Start task</li>
+<li>Stop task</li>
+<li>Pause task</li>
+<li>Resume task</li>
+<li>Full mode（dumpling）</li>
+<li>Incremental mode（syncer）</li>
+<li>Block-allow list</li>
+<li>Binlog-filter</li>
+<li>Enable relay log</li>
+<li>Permistic sharding ddl</li>
+<li>Optimistic sharding ddl</li>
+<li>。。。</li>
+</ol>
+]]></content>
+      <categories>
+        <category>DM 数据旅程</category>
+      </categories>
+      <tags>
+        <tag>DM</tag>
+        <tag>源码阅读</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>DM 数据旅程 01：第一次 start task</title>
     <url>/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2001%EF%BC%9A%E7%AC%AC%E4%B8%80%E6%AC%A1%20start%20task/</url>
     <content><![CDATA[<h2 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h2><p>本文以 start task 为目的，带着读者从 0 到 1 启动一个数据迁移任务，旨在让读者了解到最基础的 DM 逻辑。本文将直接参照集成测试 <a href="https://github.com/pingcap/dm/blob/master/tests/start_task/run.sh#L27-L36">start_task</a> 的过程，从以下几个方面展开：</p>
@@ -423,48 +475,72 @@
       </tags>
   </entry>
   <entry>
-    <title>DM 数据旅程 00：序言</title>
-    <url>/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2000%EF%BC%9A%E5%BA%8F%E8%A8%80/</url>
-    <content><![CDATA[<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>在此之前已经有官方很多关于 DM 的优秀文章了，比如</p>
+    <title>DM 数据旅程 02：分库分表悲观协调——03reSync</title>
+    <url>/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2002%EF%BC%9A%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%82%B2%E8%A7%82%E5%8D%8F%E8%B0%83%E2%80%94%E2%80%9403reSync/</url>
+    <content><![CDATA[<h2 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h2><p>在分库分表同步的过程中，不同的 DDL 之间，还会穿插着各种各样的 DML 语句，这些 DML 语句要如何处理呢？今天就来看看它们的处理过程——reSync。</p>
+<p>本节先介绍 reSync 的总流程，然后分为四个部分介绍 reSync：</p>
 <ul>
-<li><a href="https://pingcap.com/zh/blog/tidb-ecosystem-tools-3">TiDB Ecosystem Tools 原理解读系列（三）TiDB Data Migration 架构设计与实现原理</a></li>
-<li><a href="https://pingcap.com/zh/blog?tag=DM%20%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB">DM 源码解读</a></li>
+<li>一阶段：reSync 之前</li>
+<li>开启 reSync</li>
+<li>二阶段：reSync 之后</li>
+<li>关闭 reSync</li>
 </ul>
-<p>这些文章从原理方面非常详尽地介绍了 DM 的相关功能，是非常好的学习资料。但是</p>
 <span id="more"></span>
 
-<ul>
-<li>它讲述的内容跨度较大，对读者有一定的门槛，<a href="https://pingcap.com/zh/blog/dm-source-code-reading-1#%E8%83%8C%E6%99%AF%E7%9F%A5%E8%AF%86">DM 源码阅读系列文章（一）序：背景知识</a></li>
-<li>编辑时间太过久远，已经过去两年多了。DM 新增了一些新特性，对很多旧功能也进行了更新优化。所以原文中有很多内容已经过时（但大部分仍有参考价值）。例如：<a href="https://github.com/pingcap/dm/pull/540">DM 使用 Dumpling 替换了 MyDumper</a>，<a href="https://github.com/pingcap/dm/pull/568">新增乐观模式</a>等等。</li>
-</ul>
-<p>而外部的文章则大部分集中在 DM 的使用上而不是实现上。</p>
-<p>基于此，我想开一个坑《DM 数据旅程系列》，每一篇文章将以一个个小功能为线索，带大家理解 DM 中的各种实现。如果要讲的功能太大，也会拆分成小模块放出。每一步都会尽量放出 GitHub 地址，方便大家跟踪学习～</p>
 <blockquote>
-<p>数据旅程出自于龙少 PPT 中提到的用户旅程和数据旅程，指我们可以通过数据（字节）传输的途径。在看一段代码时，我们可以思考这个字节是从哪里来的，到哪里去，作用是什么，通过理解数据旅程来理解整个产品它的深层原理，并且可以通过改变数据规模（提升/降低数据数量级）和场景（不同的时间不同的位置）来理解产品的缺点（bug）。</p>
+<p>本节内容皆参考 <a href="https://github.com/pingcap/tiflow/tree/release-6.0">DM v6.0</a>，对现在而言，有可能已过时，欢迎大家提出意见～</p>
 </blockquote>
-<blockquote>
-<p>以上都是个人拙见（废话），欢迎提意见～</p>
-</blockquote>
-<p>当然，现在的 DM 正在飞速的发展迭代中，本系列的内容也可能马上就会过时，现在是 2021 年 10 月 31 日，本系列文章预计将会覆盖 DM v5.3.0-vx.x.x 的代码逻辑。</p>
-<p>如果认为文章中有任何可以改进的地方， 欢迎大家提出自己的想法。同样地，因为 DM 还在快速迭代，还有很多地方都有改进的地方，如果大家对代码实现有任何疑问，也都可以去 <a href="https://github.com/pingcap/ticdc/tree/master/dm">repo</a> 中直接提 issue。</p>
-<h2 id="读者要求"><a href="#读者要求" class="headerlink" title="读者要求"></a>读者要求</h2><ul>
-<li>能看懂 Golang 语法</li>
-<li>了解 grpc、etcd</li>
-</ul>
-<h2 id="计划章节"><a href="#计划章节" class="headerlink" title="计划章节"></a>计划章节</h2><ol>
-<li>Start task</li>
-<li>Stop task</li>
-<li>Pause task</li>
-<li>Resume task</li>
-<li>Full mode（dumpling）</li>
-<li>Incremental mode（syncer）</li>
-<li>Block-allow list</li>
-<li>Binlog-filter</li>
-<li>Enable relay log</li>
-<li>Permistic sharding ddl</li>
-<li>Optimistic sharding ddl</li>
-<li>。。。</li>
+<h2 id="二、Overview"><a href="#二、Overview" class="headerlink" title="二、Overview"></a>二、Overview</h2><ol>
+<li>进入 lock 阶段后，在第一次 sync 的时候，会跳过被 active 影响到的 targetTable 对应的 DML</li>
+<li>在 Lock resolved 之后，会回到第一次进入 lock 的 binlog Location 点，进行 reSync，把之前 skip 的 DML 重新 sync，这个阶段会跳过上次执行过的 DML。</li>
 </ol>
+<p><img src="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/unnamed-1672404522042.png"></p>
+<h3 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h3><p>两种 DML 互相隔离，不会互相影响。</p>
+<h2 id="三、过程"><a href="#三、过程" class="headerlink" title="三、过程"></a>三、过程</h2><h3 id="1、一阶段"><a href="#1、一阶段" class="headerlink" title="1、一阶段"></a>1、一阶段</h3><h4 id="Skip"><a href="#Skip" class="headerlink" title="Skip"></a>Skip</h4><p>在 handleRowsEvent 的时候，<a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2368">判断该 event 是否需要 skip</a>：</p>
+<ol>
+<li><p>通过 targetTable 得到对应的 group</p>
+</li>
+<li><p>通过 sourceTable 得到对应的 activeDDLItem，</p>
+<ol>
+<li><p>下图中 ID3 即不需要 skip</p>
+</li>
+<li><p>如果已经收到 activeDDLItem</p>
+<ol>
+<li>如果该 DML 在 active 前面，不需要 skip</li>
+<li>如果该 DML 在 active 后面，则 skip</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+<p><img src="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/unnamed-1672404521513.png"></p>
+<h3 id="2、开始-reSync"><a href="#2、开始-reSync" class="headerlink" title="2、开始 reSync"></a>2、开始 reSync</h3><p><a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2970-L2975">reSync 信号</a>：把 targetTable 和 binlog location 信息传递给主逻辑中，<a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L1843-L1864">重定向 streamer</a>。</p>
+<h4 id="ShardingReSync"><a href="#ShardingReSync" class="headerlink" title="ShardingReSync"></a>ShardingReSync</h4><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// ShardingReSync represents re-sync info for a sharding DDL group.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> ShardingReSync <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    currLocation   binlog.Location <span class="comment">// current DDL&#x27;s binlog location, initialize to first DDL&#x27;s location</span></span><br><span class="line"></span><br><span class="line">    latestLocation binlog.Location <span class="comment">// latest DDL&#x27;s binlog location</span></span><br><span class="line"></span><br><span class="line">    targetTable    *filter.Table</span><br><span class="line"></span><br><span class="line">    allResolved    <span class="type">bool</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>用到的 <code>ShardingReSync</code> 结构体：</p>
+<ul>
+<li>currLocation：用于重定向</li>
+<li>latestLocation：用于判断 reSync 是否结束</li>
+<li>targetTable：用于判断该 DML 是否需要 reSync</li>
+<li>allResolved：与关闭 reSync 有关</li>
+</ul>
+<h3 id="3、二阶段"><a href="#3、二阶段" class="headerlink" title="3、二阶段"></a>3、二阶段</h3><ol>
+<li><a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2333-L2337">判断是否 skip</a></li>
+<li>更新 <code>shardingReSync.currLocation</code> 并判断是否要结束 reSync</li>
+</ol>
+<ul>
+<li><a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2125-L2143">XIDEvent</a></li>
+<li><a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2285-L2300">RotateEvent</a></li>
+<li><a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2328-L2332">RowsEvent</a></li>
+<li><a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2629-L2645">QueryEvent</a></li>
+</ul>
+<h3 id="4、关闭-reSync"><a href="#4、关闭-reSync" class="headerlink" title="4、关闭 reSync"></a>4、关闭 reSync</h3><p>如果当前 binlog location 已经越过了 shardingReSync.lastestLocation，则重定向回去。根据是否 allResolved 有两种重定向方式，但貌似没有什么区别？</p>
+<h2 id="四、总结"><a href="#四、总结" class="headerlink" title="四、总结"></a>四、总结</h2><p>经过 reSync 之后，悲观协调就结束了。reSync 的过程不是很复杂，主要包括两种操作：</p>
+<ul>
+<li>重定向</li>
+<li>Skip</li>
+</ul>
+<p>接下来将会开始乐观协调的学习（希望😭</p>
 ]]></content>
       <categories>
         <category>DM 数据旅程</category>
@@ -583,82 +659,6 @@
 <li>https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/sharding-meta/shardmeta.go#L35</li>
 <li>。。。</li>
 </ul>
-]]></content>
-      <categories>
-        <category>DM 数据旅程</category>
-      </categories>
-      <tags>
-        <tag>DM</tag>
-        <tag>源码阅读</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>DM 数据旅程 02：分库分表悲观协调——03reSync</title>
-    <url>/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2002%EF%BC%9A%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%82%B2%E8%A7%82%E5%8D%8F%E8%B0%83%E2%80%94%E2%80%9403reSync/</url>
-    <content><![CDATA[<h2 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h2><p>在分库分表同步的过程中，不同的 DDL 之间，还会穿插着各种各样的 DML 语句，这些 DML 语句要如何处理呢？今天就来看看它们的处理过程——reSync。</p>
-<p>本节先介绍 reSync 的总流程，然后分为四个部分介绍 reSync：</p>
-<ul>
-<li>一阶段：reSync 之前</li>
-<li>开启 reSync</li>
-<li>二阶段：reSync 之后</li>
-<li>关闭 reSync</li>
-</ul>
-<span id="more"></span>
-
-<blockquote>
-<p>本节内容皆参考 <a href="https://github.com/pingcap/tiflow/tree/release-6.0">DM v6.0</a>，对现在而言，有可能已过时，欢迎大家提出意见～</p>
-</blockquote>
-<h2 id="二、Overview"><a href="#二、Overview" class="headerlink" title="二、Overview"></a>二、Overview</h2><ol>
-<li>进入 lock 阶段后，在第一次 sync 的时候，会跳过被 active 影响到的 targetTable 对应的 DML</li>
-<li>在 Lock resolved 之后，会回到第一次进入 lock 的 binlog Location 点，进行 reSync，把之前 skip 的 DML 重新 sync，这个阶段会跳过上次执行过的 DML。</li>
-</ol>
-<p><img src="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/unnamed-1672404522042.png"></p>
-<h3 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h3><p>两种 DML 互相隔离，不会互相影响。</p>
-<h2 id="三、过程"><a href="#三、过程" class="headerlink" title="三、过程"></a>三、过程</h2><h3 id="1、一阶段"><a href="#1、一阶段" class="headerlink" title="1、一阶段"></a>1、一阶段</h3><h4 id="Skip"><a href="#Skip" class="headerlink" title="Skip"></a>Skip</h4><p>在 handleRowsEvent 的时候，<a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2368">判断该 event 是否需要 skip</a>：</p>
-<ol>
-<li><p>通过 targetTable 得到对应的 group</p>
-</li>
-<li><p>通过 sourceTable 得到对应的 activeDDLItem，</p>
-<ol>
-<li><p>下图中 ID3 即不需要 skip</p>
-</li>
-<li><p>如果已经收到 activeDDLItem</p>
-<ol>
-<li>如果该 DML 在 active 前面，不需要 skip</li>
-<li>如果该 DML 在 active 后面，则 skip</li>
-</ol>
-</li>
-</ol>
-</li>
-</ol>
-<p><img src="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/unnamed-1672404521513.png"></p>
-<h3 id="2、开始-reSync"><a href="#2、开始-reSync" class="headerlink" title="2、开始 reSync"></a>2、开始 reSync</h3><p><a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2970-L2975">reSync 信号</a>：把 targetTable 和 binlog location 信息传递给主逻辑中，<a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L1843-L1864">重定向 streamer</a>。</p>
-<h4 id="ShardingReSync"><a href="#ShardingReSync" class="headerlink" title="ShardingReSync"></a>ShardingReSync</h4><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// ShardingReSync represents re-sync info for a sharding DDL group.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> ShardingReSync <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    currLocation   binlog.Location <span class="comment">// current DDL&#x27;s binlog location, initialize to first DDL&#x27;s location</span></span><br><span class="line"></span><br><span class="line">    latestLocation binlog.Location <span class="comment">// latest DDL&#x27;s binlog location</span></span><br><span class="line"></span><br><span class="line">    targetTable    *filter.Table</span><br><span class="line"></span><br><span class="line">    allResolved    <span class="type">bool</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>用到的 <code>ShardingReSync</code> 结构体：</p>
-<ul>
-<li>currLocation：用于重定向</li>
-<li>latestLocation：用于判断 reSync 是否结束</li>
-<li>targetTable：用于判断该 DML 是否需要 reSync</li>
-<li>allResolved：与关闭 reSync 有关</li>
-</ul>
-<h3 id="3、二阶段"><a href="#3、二阶段" class="headerlink" title="3、二阶段"></a>3、二阶段</h3><ol>
-<li><a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2333-L2337">判断是否 skip</a></li>
-<li>更新 <code>shardingReSync.currLocation</code> 并判断是否要结束 reSync</li>
-</ol>
-<ul>
-<li><a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2125-L2143">XIDEvent</a></li>
-<li><a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2285-L2300">RotateEvent</a></li>
-<li><a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2328-L2332">RowsEvent</a></li>
-<li><a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2629-L2645">QueryEvent</a></li>
-</ul>
-<h3 id="4、关闭-reSync"><a href="#4、关闭-reSync" class="headerlink" title="4、关闭 reSync"></a>4、关闭 reSync</h3><p>如果当前 binlog location 已经越过了 shardingReSync.lastestLocation，则重定向回去。根据是否 allResolved 有两种重定向方式，但貌似没有什么区别？</p>
-<h2 id="四、总结"><a href="#四、总结" class="headerlink" title="四、总结"></a>四、总结</h2><p>经过 reSync 之后，悲观协调就结束了。reSync 的过程不是很复杂，主要包括两种操作：</p>
-<ul>
-<li>重定向</li>
-<li>Skip</li>
-</ul>
-<p>接下来将会开始乐观协调的学习（希望😭</p>
 ]]></content>
       <categories>
         <category>DM 数据旅程</category>
