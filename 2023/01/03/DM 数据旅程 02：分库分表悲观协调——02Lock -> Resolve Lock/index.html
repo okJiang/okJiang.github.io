@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"mac"},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":true,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitalk","storage":true,"lazyload":false,"nav":null,"activeClass":"gitalk"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一、概述介绍了与悲观协调有关的各个数据结构之后，接下来将介绍一个 DM 系统从接受到第一条分表 DDL 开始，到所有该 DDL 对应的 Lock resolved 的全过程。  本节内容皆参考 DM v6.0，对现在而言，有可能已过时，欢迎大家提出意见～  二、Overview假设现在起了 master 和两个 Worker，两个 Worker 分别绑定两个 Source（s1，s2），每个 So">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DM 数据旅程 02：分库分表悲观协调——02Lock -&gt; Resolve Lock">
+<meta property="og:url" content="http://example.com/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2002%EF%BC%9A%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%82%B2%E8%A7%82%E5%8D%8F%E8%B0%83%E2%80%94%E2%80%9402Lock%20-%3E%20Resolve%20Lock/index.html">
+<meta property="og:site_name" content="okJiang">
+<meta property="og:description" content="一、概述介绍了与悲观协调有关的各个数据结构之后，接下来将介绍一个 DM 系统从接受到第一条分表 DDL 开始，到所有该 DDL 对应的 Lock resolved 的全过程。  本节内容皆参考 DM v6.0，对现在而言，有可能已过时，欢迎大家提出意见～  二、Overview假设现在起了 master 和两个 Worker，两个 Worker 分别绑定两个 Source（s1，s2），每个 So">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/unnamed-1672403283187.png">
+<meta property="og:image" content="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/unnamed-1672403283666.png">
+<meta property="og:image" content="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/unnamed-1672403283187.png">
+<meta property="og:image" content="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/unnamed-1672403283679.png">
+<meta property="og:image" content="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/image-1672713793518.png">
+<meta property="og:image" content="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/unnamed-1672403283186.png">
+<meta property="og:image" content="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/unnamed-1672403283692.png">
+<meta property="article:published_time" content="2023-01-03T13:58:36.000Z">
+<meta property="article:modified_time" content="2023-01-03T14:47:15.689Z">
+<meta property="article:author" content="okJiang">
+<meta property="article:tag" content="DM">
+<meta property="article:tag" content="源码阅读">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/unnamed-1672403283187.png">
+
+<link rel="canonical" href="http://example.com/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2002%EF%BC%9A%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%82%B2%E8%A7%82%E5%8D%8F%E8%B0%83%E2%80%94%E2%80%9402Lock%20-%3E%20Resolve%20Lock/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>DM 数据旅程 02：分库分表悲观协调——02Lock -> Resolve Lock | okJiang</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="okJiang" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">okJiang</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">自娱自乐</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+  <a role="button" class="book-mark-link book-mark-link-fixed"></a>
+
+  <a href="https://github.com/okJiang/okJiang.github.io" class="github-corner" title="GitHub" aria-label="GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2002%EF%BC%9A%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%82%B2%E8%A7%82%E5%8D%8F%E8%B0%83%E2%80%94%E2%80%9402Lock%20-%3E%20Resolve%20Lock/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.JPG">
+      <meta itemprop="name" content="okJiang">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="okJiang">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          DM 数据旅程 02：分库分表悲观协调——02Lock -> Resolve Lock
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2023-01-03 21:58:36 / 修改时间：22:47:15" itemprop="dateCreated datePublished" datetime="2023-01-03T21:58:36+08:00">2023-01-03</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/DM-%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B/" itemprop="url" rel="index"><span itemprop="name">DM 数据旅程</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>2.7k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>5 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h2><p>介绍了与悲观协调有关的各个数据结构之后，接下来将介绍一个 DM 系统从接受到第一条分表 DDL 开始，到所有该 DDL 对应的 Lock resolved 的全过程。</p>
+<blockquote>
+<p>本节内容皆参考 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/tree/release-6.0">DM v6.0</a>，对现在而言，有可能已过时，欢迎大家提出意见～</p>
+</blockquote>
+<h2 id="二、Overview"><a href="#二、Overview" class="headerlink" title="二、Overview"></a>二、Overview</h2><p>假设现在起了 master 和两个 Worker，两个 Worker 分别绑定两个 Source（s1，s2），每个 Source 有两个分表（t1，t2），这四个表会 route 到一个 target table（tarTbl）中。在 DDL 到来之前，两个 worker 会创建好 ShardingGroupKeeper，里面只有一个 target table，两个 source table。</p>
+<span id="more"></span>
+
+<p><img src="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/unnamed-1672403283187.png"></p>
+<p>两个 Worker 先后收到两个 Source 四个分表的同一条 DDL，表示为：</p>
+<ul>
+<li>DDL1：表示对 s1.t1 的 DDL。</li>
+<li>DDL2：表示对 s2.t1 的 DDL。</li>
+<li>DDL3：表示对 s1.t2 的 DDL。</li>
+<li>DDL4：表示对 s2.t2 的 DDL。</li>
+</ul>
+<p><img src="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/unnamed-1672403283666.png"></p>
+<h2 id="三、具体过程"><a href="#三、具体过程" class="headerlink" title="三、具体过程"></a>三、具体过程</h2><blockquote>
+<p>本小节 worker 对 DDL 的处理从 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2853">handleQueryEventPessimistic</a> 开始，如果不知道在此之前的 DDL 做过哪些处理，请期待后续文章😁</p>
+</blockquote>
+<p>接下来将对上图中的步骤一一介绍</p>
+<h3 id="Step-1"><a href="#Step-1" class="headerlink" title="Step 1"></a>Step 1</h3><ol>
+<li>worker1 收到来自 source1 的 DDL1，会直接 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2883">TrySync</a>，这里返回了一大堆的参数，其实有用的就只是 <code>synced</code>，简单来说，里面只做了一件事：<a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/sharding_group.go#L215">AddItem</a>。下面详细介绍一下 TrySync</li>
+</ol>
+<blockquote>
+<p>本节，假设该 DDL 不是 CreateTableStmt，如果是的话，也很简单，每次都是 remain &lt;=0，synced = true，但是只有第一次发送该 create table 的 worker 会 syncDDL。</p>
+</blockquote>
+<h4 id="TrySync"><a href="#TrySync" class="headerlink" title="TrySync"></a>TrySync</h4><p>想要知道 worker 在悲观协调的时候做了什么，必须要搞懂 TrySync 是怎么运作的。在此之前，我们来重新理解一下 ShardingGroupKeeper：</p>
+<p><img src="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/unnamed-1672403283187.png"></p>
+<p>单独拿出一个 ShardingGroup 举例（颜色代表 DDL 的种类）：</p>
+<h5 id="Example"><a href="#Example" class="headerlink" title="Example"></a>Example</h5><p>worker 收到了以下 DDL</p>
+<ul>
+<li>依次收到了 table1 橙色、黄色、绿色三条 DDL</li>
+<li>收到了 table2 橙色</li>
+<li>这个时候 <code>activeIdx = 0</code>，<code>remain = 1</code>，因为只有 table3 没有收到 active DDL 了</li>
+</ul>
+<p><img src="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/unnamed-1672403283679.png"></p>
+<ul>
+<li>如果在这个时候收到了 table3 橙色 DDL，<code>remain = 0</code>，处理了这条 DDL 之后，<code>active ++</code></li>
+</ul>
+<p><img src="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/image-1672713793518.png" alt="image.png"></p>
+<ul>
+<li>如果这个时候收到 table2 绿色 DDL，则会<a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/sharding-meta/shardmeta.go#L197-L199">报错</a>，悲观协调要求同一个 source table 中 DDL 必须有序</li>
+</ul>
+<p><img src="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/unnamed-1672403283186.png"></p>
+<ul>
+<li>如果 group 中所有的 DDL 都 resolved 了。则会<a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/sharding-meta/shardmeta.go#L243-L246">重置</a>一下 meta</li>
+</ul>
+<p><img src="https://tidb-blog.oss-cn-beijing.aliyuncs.com/media/unnamed-1672403283692.png"></p>
+<p>总结：<a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/sharding_group.go#L215">AddItem</a> 就是上面图中把 DDLItem 放进 ShardingSequence 的过程</p>
+<h3 id="Step-2-与-Step-1-相同"><a href="#Step-2-与-Step-1-相同" class="headerlink" title="Step 2 与 Step 1 相同"></a>Step 2 与 Step 1 相同</h3><h3 id="Step-3"><a href="#Step-3" class="headerlink" title="Step 3"></a>Step 3</h3><p>由于 tarTbl 只有两个 source table：s1.t1 和 s1.t2，这时 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2883">TrySync</a> 后，<a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2948">synced = true</a>，说明该 worker ready</p>
+<h3 id="Step-4"><a href="#Step-4" class="headerlink" title="Step 4"></a>Step 4</h3><h4 id="worker1"><a href="#worker1" class="headerlink" title="worker1"></a>worker1</h4><ul>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2985">PutInfo</a>：发送 ready info 给 master（后面会详细介绍这个函数）</li>
+<li>之后会被阻塞，<a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2992">等待 master 发送 operation</a>。</li>
+</ul>
+<h4 id="Master"><a href="#Master" class="headerlink" title="Master"></a>Master</h4><ul>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L177">watchInfoPut</a>：成功监听到了</li>
+<li>handleInfoPut：master 也开始 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L474">TrySync</a>，master 的 TrySync 相比 worker 中的要简单很多，每一个 Info 直接相当于该 source/worker 已 ready，所以直接统计是否所有 ready 即可</li>
+<li>由于这里是第一个 worker 发 info 给 master，所以需要<a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/pkg/shardddl/pessimism/keeper.go#L49">新建 Lock</a>，新建 Lock 过程中会获取该 task 所有的 source，并存到 lock 中，这样就知道还有多少 source 没 ready。显然还有 source2 没 ready。</li>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L481-L485">继续等待</a></li>
+</ul>
+<h3 id="Step-5-与-Step-3-相同"><a href="#Step-5-与-Step-3-相同" class="headerlink" title="Step 5 与 Step 3 相同"></a>Step 5 与 Step 3 相同</h3><h3 id="Step-6"><a href="#Step-6" class="headerlink" title="Step 6"></a>Step 6</h3><ul>
+<li>前面与 Step 4 相同，但是这时所有 source 都 ready 了，<a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L486">synced = true</a></li>
+</ul>
+<h3 id="Step-7"><a href="#Step-7" class="headerlink" title="Step 7"></a>Step 7</h3><h4 id="master"><a href="#master" class="headerlink" title="master"></a>master</h4><ul>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L599">putOpForOwner</a>：发送 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L604">exec</a> operation to owner(worker1)</li>
+</ul>
+<h4 id="Worker1"><a href="#Worker1" class="headerlink" title="Worker1"></a>Worker1</h4><ul>
+<li><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/shardddl/pessimist.go#L120-L124">得到 master 的 exec operation</a></p>
+</li>
+<li><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L3042-L3043">NewDDLJob</a> 并 handle</p>
+</li>
+<li><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L1057">addJob</a>：发送 job 给 DDLJobCh</p>
+</li>
+<li><p>syncDDL：之前 worker 起的协程接受到该 job</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L1324">拿到刚刚得到的 operation</a>，并且不会被跳过，因为 ignore = false</li>
+</ul>
+</li>
+</ul>
+<h3 id="Step-8"><a href="#Step-8" class="headerlink" title="Step 8"></a>Step 8</h3><ul>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L1344">同步到下游</a></li>
+</ul>
+<h3 id="Step-9"><a href="#Step-9" class="headerlink" title="Step 9"></a>Step 9</h3><h4 id="Worker1-1"><a href="#Worker1-1" class="headerlink" title="Worker1"></a>Worker1</h4><ul>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L1384">DoneOperationDeleteInfo</a>：发送 done operation 给 master 并删除 info</li>
+</ul>
+<h3 id="Step-10"><a href="#Step-10" class="headerlink" title="Step 10"></a>Step 10</h3><h4 id="Master-1"><a href="#Master-1" class="headerlink" title="Master"></a>Master</h4><ul>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L509">接受 done operation</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L529">markDone</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L553">putOpsForNonOwner</a>：给其他所有 non-owner 发送 skip info（skip done 是为了防止把 done 覆盖掉）</li>
+</ul>
+<h4 id="Worker2"><a href="#Worker2" class="headerlink" title="Worker2"></a>Worker2</h4><ul>
+<li>接受到了 no exec(skip) 的 operation，和 Step 7 类似，但是在 syncDDL 的时候会<a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L1325-L1328">被 skip</a></li>
+</ul>
+<h3 id="Step-11-和-Step-9-相同"><a href="#Step-11-和-Step-9-相同" class="headerlink" title="Step 11 和 Step 9 相同"></a>Step 11 和 Step 9 相同</h3><h2 id="四、总结"><a href="#四、总结" class="headerlink" title="四、总结"></a>四、总结</h2><p>本节介绍了在悲观协调过程中，遇到第一条 DDL 语句，生成 Lock，到收到所有 DDL 语句，Lock 解除的过程。</p>
+<p>经过本节的学习，我们已经完全学会了 DM 悲观协调的过程。是不是也没那么复杂😏，但是在这个过程中，我们只知道 DDL 的处理方式，这个过程中的 DML 会怎么办呢？下一章揭晓。</p>
+<h2 id="五、疑似-bug"><a href="#五、疑似-bug" class="headerlink" title="五、疑似 bug"></a>五、疑似 bug</h2><ol>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L552-L559">initShardingGroups</a> 中对 ShardingGroup.sources 进行了初始化，这里包含了该 targetTable 对应的所有 sourceTables</li>
+<li>在 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2883">TrySync</a> 的时候，却使用第一个 <code>sourceTable[0]</code>，来标记所有的 <code>DDL[]</code>，如果 <code>len(DDL[]) != 1</code>，则 remain 永远不可能为 0。因为 sourceTables 来源于 ddlInfo。而 DDLInfo 只存了<a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2738-L2743">第一条 ddl 的 ddlInfo</a>，实际上对于每一个 Split 之后的 DDL，都会 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2694">genDDLInfo</a>。</li>
+<li>但是奇怪的是，代码中标注了<a target="_blank" rel="noopener" href="http://errsyncerunitddlonmultipletable/">不支持 multi-table DDL</a>，这个 error 在 pessimist/optimist mode 中都用到了。但是在现在看 pessimist 代码中，又看到其为 multi-table DDL 实现了部分相关逻辑。。。<strong>有毒</strong></li>
+<li>比如：</li>
+</ol>
+<ul>
+<li>https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L2957-L2960</li>
+<li>https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/sharding-meta/shardmeta.go#L35</li>
+<li>。。。</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/DM/" rel="tag"># DM</a>
+              <a href="/tags/%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/" rel="tag"># 源码阅读</a>
+          </div>
+
+        
+  <div class="post-widgets">
+    <div class="wp_rating">
+      <div id="wpac-rating"></div>
+    </div>
+  </div>
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2002%EF%BC%9A%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%82%B2%E8%A7%82%E5%8D%8F%E8%B0%83%E2%80%94%E2%80%9401%E5%87%86%E5%A4%87%E8%BF%87%E7%A8%8B/" rel="prev" title="DM 数据旅程 02：分库分表悲观协调——01准备过程">
+      <i class="fa fa-chevron-left"></i> DM 数据旅程 02：分库分表悲观协调——01准备过程
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2002%EF%BC%9A%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%82%B2%E8%A7%82%E5%8D%8F%E8%B0%83%E2%80%94%E2%80%9403reSync/" rel="next" title="DM 数据旅程 02：分库分表悲观协调——03reSync">
+      DM 数据旅程 02：分库分表悲观协调——03reSync <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E6%A6%82%E8%BF%B0"><span class="nav-number">1.</span> <span class="nav-text">一、概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81Overview"><span class="nav-number">2.</span> <span class="nav-text">二、Overview</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E5%85%B7%E4%BD%93%E8%BF%87%E7%A8%8B"><span class="nav-number">3.</span> <span class="nav-text">三、具体过程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Step-1"><span class="nav-number">3.1.</span> <span class="nav-text">Step 1</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#TrySync"><span class="nav-number">3.1.1.</span> <span class="nav-text">TrySync</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#Example"><span class="nav-number">3.1.1.1.</span> <span class="nav-text">Example</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Step-2-%E4%B8%8E-Step-1-%E7%9B%B8%E5%90%8C"><span class="nav-number">3.2.</span> <span class="nav-text">Step 2 与 Step 1 相同</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Step-3"><span class="nav-number">3.3.</span> <span class="nav-text">Step 3</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Step-4"><span class="nav-number">3.4.</span> <span class="nav-text">Step 4</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#worker1"><span class="nav-number">3.4.1.</span> <span class="nav-text">worker1</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Master"><span class="nav-number">3.4.2.</span> <span class="nav-text">Master</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Step-5-%E4%B8%8E-Step-3-%E7%9B%B8%E5%90%8C"><span class="nav-number">3.5.</span> <span class="nav-text">Step 5 与 Step 3 相同</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Step-6"><span class="nav-number">3.6.</span> <span class="nav-text">Step 6</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Step-7"><span class="nav-number">3.7.</span> <span class="nav-text">Step 7</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#master"><span class="nav-number">3.7.1.</span> <span class="nav-text">master</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Worker1"><span class="nav-number">3.7.2.</span> <span class="nav-text">Worker1</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Step-8"><span class="nav-number">3.8.</span> <span class="nav-text">Step 8</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Step-9"><span class="nav-number">3.9.</span> <span class="nav-text">Step 9</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Worker1-1"><span class="nav-number">3.9.1.</span> <span class="nav-text">Worker1</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Step-10"><span class="nav-number">3.10.</span> <span class="nav-text">Step 10</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Master-1"><span class="nav-number">3.10.1.</span> <span class="nav-text">Master</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Worker2"><span class="nav-number">3.10.2.</span> <span class="nav-text">Worker2</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Step-11-%E5%92%8C-Step-9-%E7%9B%B8%E5%90%8C"><span class="nav-number">3.11.</span> <span class="nav-text">Step 11 和 Step 9 相同</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81%E6%80%BB%E7%BB%93"><span class="nav-number">4.</span> <span class="nav-text">四、总结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81%E7%96%91%E4%BC%BC-bug"><span class="nav-number">5.</span> <span class="nav-text">五、疑似 bug</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="okJiang"
+      src="/images/avatar.JPG">
+  <p class="site-author-name" itemprop="name">okJiang</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">6</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">okJiang</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="站点总字数">20k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">33 分钟</span>
+</div>
+
+        
+<div class="busuanzi-count">
+  <script data-pjax async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/pjax/pjax.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+<script src="/js/bookmark.js"></script>
+
+  <script>
+var pjax = new Pjax({
+  selectors: [
+    'head title',
+    '#page-configurations',
+    '.content-wrap',
+    '.post-toc-wrap',
+    '.languages',
+    '#pjax'
+  ],
+  switches: {
+    '.post-toc-wrap': Pjax.switches.innerHTML
+  },
+  analytics: false,
+  cacheBust: false,
+  scrollTo : !CONFIG.bookmark.enable
+});
+
+window.addEventListener('pjax:success', () => {
+  document.querySelectorAll('script[data-pjax], script#page-configurations, #pjax script').forEach(element => {
+    var code = element.text || element.textContent || element.innerHTML || '';
+    var parent = element.parentNode;
+    parent.removeChild(element);
+    var script = document.createElement('script');
+    if (element.id) {
+      script.id = element.id;
+    }
+    if (element.className) {
+      script.className = element.className;
+    }
+    if (element.type) {
+      script.type = element.type;
+    }
+    if (element.src) {
+      script.src = element.src;
+      // Force synchronous loading of peripheral JS.
+      script.async = false;
+    }
+    if (element.dataset.pjax !== undefined) {
+      script.dataset.pjax = '';
+    }
+    if (code !== '') {
+      script.appendChild(document.createTextNode(code));
+    }
+    parent.appendChild(script);
+  });
+  NexT.boot.refresh();
+  // Define Motion Sequence & Bootstrap Motion.
+  if (CONFIG.motion.enable) {
+    NexT.motion.integrator
+      .init()
+      .add(NexT.motion.middleWares.subMenu)
+      .add(NexT.motion.middleWares.postList)
+      .bootstrap();
+  }
+  NexT.utils.updateSidebarPosition();
+});
+</script>
+
+
+
+
+  
+
+
+
+  <script data-pjax>
+  if (CONFIG.page.isPost) {
+    wpac_init = window.wpac_init || [];
+    wpac_init.push({
+      widget: 'Rating',
+      id    : ,
+      el    : 'wpac-rating',
+      color : 'f79533'
+    });
+    (function() {
+      if ('WIDGETPACK_LOADED' in window) return;
+      WIDGETPACK_LOADED = true;
+      var mc = document.createElement('script');
+      mc.type = 'text/javascript';
+      mc.async = true;
+      mc.src = '//embed.widgetpack.com/widget.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(mc, s.nextSibling);
+    })();
+  }
+  </script>
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <div id="pjax">
+  
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd0eb41321560dae0a183',
+      clientSecret: 'c3a28c5fc4ff826acd0bc494d58a2fb49615e34c',
+      repo        : 'okJiang.github.io',
+      owner       : 'okJiang',
+      admin       : ['okJiang'],
+      id          : '2ba7e38ed46fdbc50463131047ed21d7',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+    </div>
+</body>
+</html>

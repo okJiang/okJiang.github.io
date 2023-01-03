@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"mac"},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":true,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitalk","storage":true,"lazyload":false,"nav":null,"activeClass":"gitalk"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一、概述本文以 start task 为目的，带着读者从 0 到 1 启动一个数据迁移任务，旨在让读者了解到最基础的 DM 逻辑。本文将直接参照集成测试 start_task 的过程，从以下几个方面展开：  Start dm-master Start dm-worker 绑定 source 和 dm-worker Start task">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DM 数据旅程 01：第一次 start task">
+<meta property="og:url" content="http://example.com/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2001%EF%BC%9A%E7%AC%AC%E4%B8%80%E6%AC%A1%20start%20task/index.html">
+<meta property="og:site_name" content="okJiang">
+<meta property="og:description" content="一、概述本文以 start task 为目的，带着读者从 0 到 1 启动一个数据迁移任务，旨在让读者了解到最基础的 DM 逻辑。本文将直接参照集成测试 start_task 的过程，从以下几个方面展开：  Start dm-master Start dm-worker 绑定 source 和 dm-worker Start task">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-01-03T13:51:36.000Z">
+<meta property="article:modified_time" content="2023-01-03T14:46:59.479Z">
+<meta property="article:author" content="okJiang">
+<meta property="article:tag" content="DM">
+<meta property="article:tag" content="源码阅读">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://example.com/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2001%EF%BC%9A%E7%AC%AC%E4%B8%80%E6%AC%A1%20start%20task/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>DM 数据旅程 01：第一次 start task | okJiang</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="okJiang" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">okJiang</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">自娱自乐</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+  <a role="button" class="book-mark-link book-mark-link-fixed"></a>
+
+  <a href="https://github.com/okJiang/okJiang.github.io" class="github-corner" title="GitHub" aria-label="GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2001%EF%BC%9A%E7%AC%AC%E4%B8%80%E6%AC%A1%20start%20task/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.JPG">
+      <meta itemprop="name" content="okJiang">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="okJiang">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          DM 数据旅程 01：第一次 start task
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2023-01-03 21:51:36 / 修改时间：22:46:59" itemprop="dateCreated datePublished" datetime="2023-01-03T21:51:36+08:00">2023-01-03</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/DM-%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B/" itemprop="url" rel="index"><span itemprop="name">DM 数据旅程</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>2.8k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>5 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h2><p>本文以 start task 为目的，带着读者从 0 到 1 启动一个数据迁移任务，旨在让读者了解到最基础的 DM 逻辑。本文将直接参照集成测试 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/master/tests/start_task/run.sh#L27-L36">start_task</a> 的过程，从以下几个方面展开：</p>
+<ol>
+<li>Start dm-master</li>
+<li>Start dm-worker</li>
+<li>绑定 source 和 dm-worker</li>
+<li>Start task</li>
+</ol>
+<span id="more"></span>
+
+<blockquote>
+<p>注：为了专注于我们的目的（start task），本文不会对无关代码进行解读</p>
+</blockquote>
+<blockquote>
+<p>大家可使用 <a target="_blank" rel="noopener" href="https://pingcap.feishu.cn/mindnotes/bmncnqlO5BCrkgxFqabTLaz6EQh#mindmap">start/stop 流程</a> 辅助阅读</p>
+<p>由于写这篇的文章的时间是 2021 年 12 月份，所以所有的链接都是原 DM repo 的😂</p>
+</blockquote>
+<h2 id="二、start-dm-master"><a href="#二、start-dm-master" class="headerlink" title="二、start dm-master"></a>二、start dm-master</h2><ol>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/master/tests/start_task/run.sh#L27">./dm-master</a>（in <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/master/tests/_utils/run_dm_master">run_dm_master</a>） 启动二进制文件，即调用 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/master/cmd/dm-master/main.go#L35">main 函数</a>，其中 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/master/cmd/dm-master/main.go#L69">master-server start</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/server.go#L232">go electionNotify</a>：这个是为了<a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/election.go#L55">等待 </a><code>etcd election</code><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/election.go#L55"> 成功</a>，并在其成功后做⬇️</li>
+</ol>
+<blockquote>
+<p>DM master 中内嵌了一个 <a target="_blank" rel="noopener" href="https://etcd.io/">etcd</a>，用于存储各种元数据，并且借此保证 DM master 的高可用。后面非常多的数据存储都会用到 etcd。</p>
+</blockquote>
+<ol start="3">
+<li><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/election.go#L71">startLeaderComponent</a>，其中我们这次只需要关注 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/election.go#L173">s.scheduler.Start</a> 中的<a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/scheduler/scheduler.go#L243">go observeWorkerEvent</a>，主要分为两部分</p>
+<ol>
+<li><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/scheduler/scheduler.go#L1617">go WatchWorkerEvent</a>：该函数通过 etcd client 监听<a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/pkg/ha/keepalive.go#L198">是否有 workerEvent 出现</a></p>
+</li>
+<li><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/scheduler/scheduler.go#L1619">handleWorkerEv</a>：有 workerEvent 出现时，handle it</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/scheduler/scheduler.go#L1580">handleWorkerOffline</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/scheduler/scheduler.go#L1582">handleWorkerOnline</a></li>
+</ol>
+</li>
+</ol>
+</li>
+<li><p>这个时候，dm-master 等待 workerEvent 到来</p>
+</li>
+</ol>
+<h2 id="三、start-dm-worker"><a href="#三、start-dm-worker" class="headerlink" title="三、start dm-worker"></a>三、start dm-worker</h2><ol>
+<li><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/master/tests/start_task/run.sh#L29">./dm-worker</a>（in <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/master/tests/_utils/run_dm_worker">run_dm_worker</a>）启动二进制文件，即调用 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/cmd/dm-worker/main.go">main 函数</a>，其中<a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/cmd/dm-worker/main.go#L89"> worker-server start</a></p>
+</li>
+<li><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/cmd/dm-worker/main.go#L78">JoinMaster</a>：先告诉 master，我来了！</p>
+<ol>
+<li>worker 先在这 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/join.go#L72">RegisterWorker</a>，然后会触发 master 调用 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/server.go#L298">RegisterWorker</a></li>
+<li>Master 会调用 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/server.go#L308">AddWorker</a>，然后 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/scheduler/scheduler.go#L907">PutWorkerInfo</a>，把相应的 key-value <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/pkg/ha/worker.go#L69">写到 etcd</a> 中</li>
+<li>可以看到写到 etcd 用的是 <code>clientv3.OpPut(key, value)</code>，也就是说 kv 要执行 put 操作</li>
+<li>之前的 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/scheduler/scheduler.go#L1617">go WatchWorkerEvent</a> 中就监听到有事件来了，并且判断其为 <code>mvccpb.PUT</code><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/pkg/ha/keepalive.go#L224"> 类型</a>，event 处理之后会通过 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/pkg/ha/keepalive.go#L242">outCh</a> 传到 handleWorkerEv 中进行具体的<a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/scheduler/scheduler.go#L1582">上线处理</a></li>
+<li>刚上线的时候，就会去各种找 source 去 bound，但是现在我们还没有 create source，所以也找不到 source，暂时可以不关注这里</li>
+</ol>
+</li>
+<li><p>Start task 还需要 bound source，那 worker 首先要做的就是 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/server.go#L169">observeSourceBound</a>，这里同 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/scheduler/scheduler.go#L243">observeWorkerEvent</a> 是类似的：</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/server.go#L404">go WatchSourceBound</a>：通过 etcd client 监听<a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/pkg/ha/bound.go#L265">是否有 sourceBound 出现</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/server.go#L406">handleSourceBound</a>：上面监听到了之后，则 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/server.go#L582">operateSourceBound</a></li>
+</ol>
+</li>
+<li><p>接下来，dm-worker 等待 source bound</p>
+</li>
+</ol>
+<h2 id="四、operate-source-create"><a href="#四、operate-source-create" class="headerlink" title="四、operate-source create"></a>四、operate-source create</h2><blockquote>
+<p>DM 用的命令行工具是 <a target="_blank" rel="noopener" href="https://github.com/spf13/cobra">cobra</a>，有兴趣的读者可深入了解一下</p>
+</blockquote>
+<ol>
+<li><p>命令行执行 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/master/tests/start_task/run.sh#L34">operate-source create</a>（in <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/master/tests/_utils/test_prepare#L128-L136">test_prepare</a>），<code>operate-source</code> 这个命令在 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/ctl/ctl.go#L68">NewOperateSourceCmd</a> 注册，具体实现在 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/ctl/master/operate_source.go#L39">operateSourceFunc</a></p>
+</li>
+<li><p>读取到该命令后，开始<a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/ctl/master/operate_source.go#L89">解析</a>第一个参数（即 <code>create</code>）并<a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/ctl/master/operate_source.go#L47-L48">转换</a>，最后被<a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/ctl/master/operate_source.go#L143-L152">打包送</a>到 master，开始执行 master 的 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/server.go#L1186">OperateSource</a> 函数</p>
+</li>
+<li><p>该函数中，master 会从命令行中给出的配置文件路径</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/server.go#L1205">解析并调整</a> source config</li>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/server.go#L1227">把 source cfg 也存到 etcd 里</a>，因为 worker 待会要用</li>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/scheduler/scheduler.go#L318-L319">Try to bound it to a free worker</a>：因为我们是第一次 start task，并且也没有开启 relay 功能（<a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/master/tests/start_task/conf/source1.yaml#L4">test</a> 中是开启了，但本篇文章假设不开启），所以我们就只能 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/scheduler/scheduler.go#L1904-L1915">bound a free worker</a> 了。</li>
+<li>最终，通过 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/scheduler/scheduler.go#L1936">PutSourceBound</a>，把 SourceBound <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/pkg/ha/bound.go#L100">通过 etcd client 发送</a></li>
+</ol>
+</li>
+<li><p>发送之后，worker 就通过 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/server.go#L404">go WatchSourceBound</a> 监听到有 SourceBound 出现，然后进行 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/server.go#L582">operateSourceBound</a></p>
+<ol>
+<li>首先需要<a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/server.go#L649">拿到 source cfg</a>，因为上面的操作都是在 master 执行的，worker 这里并没有 source cfg</li>
+<li>Source cfg 也是通过 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/pkg/ha/source.go#L83">etcd</a> 拿到的，正好上面存了</li>
+</ol>
+</li>
+<li><p>之后就可以<a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/server.go#L658">开始 subtask 了吧</a>！</p>
+<ol>
+<li>但是并没有。。。我们还没开始 start task 呢！</li>
+<li>所以 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/source_worker.go#L396">fetchSubTasksAndAdjust</a> 并不能拿到 subtask。拿到是空的</li>
+</ol>
+</li>
+<li><p>那没办法了，继续<a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/source_worker.go#L422">等</a>呗（又是同样的 watch/handle 机制）</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/source_worker.go#L638">go WatchSubTaskStage</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/source_worker.go#L640">handleSubTaskStage</a></li>
+</ol>
+</li>
+</ol>
+<h2 id="五、start-task"><a href="#五、start-task" class="headerlink" title="五、start-task"></a>五、start-task</h2><ol>
+<li><p>命令行执行 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/master/tests/start_task/run.sh#L36">start-task</a>（in <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/master/tests/_utils/test_prepare#L53-L64">test_prepare</a>），<code>start-task</code> 命令的注册和实现参考 <code>operate-source</code>，最后执行 master 的 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/server.go#L404">StartTask</a> 函数</p>
+</li>
+<li><p>直接开始就 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/server.go#L426">generateSubTask</a>（<code>req.Task</code> 直接传递的就是解析好的 <code>task.yaml</code> 字符串，原来在命令的实现中就帮我们解析好啦）。简单的说，就是经过一些 adjust 和 check， 帮助我们生成了 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/config/subtask.go#L184">SubTask</a> struct</p>
+</li>
+<li><p>重点来了，<a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/server.go#L489">AddSubTasks</a> -&gt; <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/scheduler/scheduler.go#L727">NewSubTaskStage</a>，subTask 终于创建好了，stage=running；再 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/master/scheduler/scheduler.go#L739">put</a> 进 etcd，完美。可以看到我们分别把 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/pkg/ha/ops.go#L91">SubTaskCfg</a> 和 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/pkg/ha/ops.go#L95">SubTaskStage</a> 都 put 进 etcd 了。</p>
+</li>
+<li><p>那上面就 watch 到 stage 来了，对 SubTaskCfg 进行<a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/source_worker.go#L682">处理</a>，如果我们是要进行 run 的操作，我们还得<a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/source_worker.go#L735-L743">先把 cfg 拿出来</a>，最后 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/source_worker.go#L716">startSubTask</a></p>
+</li>
+<li><p>startSubTask 中，会 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/source_worker.go#L481">NewSubTask</a>，再 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/source_worker.go#L504">runSubTask</a>。subTask 内部具体的执行组建是由 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/unit/unit.go#L32-L67">unit</a> 负责的，所以它会</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/subtask.go#L200">initUnits</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/subtask.go#L207">st.run</a> 其实也是由 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/subtask.go#L228">currentUnit</a> 来 <a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/blob/39b5e2098f21260c14373a23069f7e38395d8d7f/dm/worker/subtask.go#L233">Process</a></li>
+</ol>
+</li>
+</ol>
+<h2 id="六、结语"><a href="#六、结语" class="headerlink" title="六、结语"></a>六、结语</h2><p>在 unit Process 后，start-task 就结束啦！是不是还意犹未尽呢？到底有哪些 unit 呢？这些 unit 内部到底是怎么 Process 的呢？在后续的文章中会陆续和大家见面哦。</p>
+<p>其实再复读一下全文，我们发现本篇文章并没有太多很难的东西，大部分篇幅都在描述一些「准备活动」，全程用 etcd watch——master 等待 worker 到来、worker 等待 source 到来、source-worker 等待 subtask 到来。等就完事了。</p>
+<p>任何建议和反馈都欢迎告诉我。下期再见！</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/DM/" rel="tag"># DM</a>
+              <a href="/tags/%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/" rel="tag"># 源码阅读</a>
+          </div>
+
+        
+  <div class="post-widgets">
+    <div class="wp_rating">
+      <div id="wpac-rating"></div>
+    </div>
+  </div>
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2000%EF%BC%9A%E5%BA%8F%E8%A8%80/" rel="prev" title="DM 数据旅程 00：序言">
+      <i class="fa fa-chevron-left"></i> DM 数据旅程 00：序言
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2002%EF%BC%9A%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%82%B2%E8%A7%82%E5%8D%8F%E8%B0%83%E2%80%94%E2%80%9401%E5%87%86%E5%A4%87%E8%BF%87%E7%A8%8B/" rel="next" title="DM 数据旅程 02：分库分表悲观协调——01准备过程">
+      DM 数据旅程 02：分库分表悲观协调——01准备过程 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E6%A6%82%E8%BF%B0"><span class="nav-number">1.</span> <span class="nav-text">一、概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%E3%80%81start-dm-master"><span class="nav-number">2.</span> <span class="nav-text">二、start dm-master</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81start-dm-worker"><span class="nav-number">3.</span> <span class="nav-text">三、start dm-worker</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9B%E3%80%81operate-source-create"><span class="nav-number">4.</span> <span class="nav-text">四、operate-source create</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%94%E3%80%81start-task"><span class="nav-number">5.</span> <span class="nav-text">五、start-task</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E3%80%81%E7%BB%93%E8%AF%AD"><span class="nav-number">6.</span> <span class="nav-text">六、结语</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="okJiang"
+      src="/images/avatar.JPG">
+  <p class="site-author-name" itemprop="name">okJiang</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">6</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">okJiang</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="站点总字数">20k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">33 分钟</span>
+</div>
+
+        
+<div class="busuanzi-count">
+  <script data-pjax async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/pjax/pjax.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+<script src="/js/bookmark.js"></script>
+
+  <script>
+var pjax = new Pjax({
+  selectors: [
+    'head title',
+    '#page-configurations',
+    '.content-wrap',
+    '.post-toc-wrap',
+    '.languages',
+    '#pjax'
+  ],
+  switches: {
+    '.post-toc-wrap': Pjax.switches.innerHTML
+  },
+  analytics: false,
+  cacheBust: false,
+  scrollTo : !CONFIG.bookmark.enable
+});
+
+window.addEventListener('pjax:success', () => {
+  document.querySelectorAll('script[data-pjax], script#page-configurations, #pjax script').forEach(element => {
+    var code = element.text || element.textContent || element.innerHTML || '';
+    var parent = element.parentNode;
+    parent.removeChild(element);
+    var script = document.createElement('script');
+    if (element.id) {
+      script.id = element.id;
+    }
+    if (element.className) {
+      script.className = element.className;
+    }
+    if (element.type) {
+      script.type = element.type;
+    }
+    if (element.src) {
+      script.src = element.src;
+      // Force synchronous loading of peripheral JS.
+      script.async = false;
+    }
+    if (element.dataset.pjax !== undefined) {
+      script.dataset.pjax = '';
+    }
+    if (code !== '') {
+      script.appendChild(document.createTextNode(code));
+    }
+    parent.appendChild(script);
+  });
+  NexT.boot.refresh();
+  // Define Motion Sequence & Bootstrap Motion.
+  if (CONFIG.motion.enable) {
+    NexT.motion.integrator
+      .init()
+      .add(NexT.motion.middleWares.subMenu)
+      .add(NexT.motion.middleWares.postList)
+      .bootstrap();
+  }
+  NexT.utils.updateSidebarPosition();
+});
+</script>
+
+
+
+
+  
+
+
+
+  <script data-pjax>
+  if (CONFIG.page.isPost) {
+    wpac_init = window.wpac_init || [];
+    wpac_init.push({
+      widget: 'Rating',
+      id    : ,
+      el    : 'wpac-rating',
+      color : 'f79533'
+    });
+    (function() {
+      if ('WIDGETPACK_LOADED' in window) return;
+      WIDGETPACK_LOADED = true;
+      var mc = document.createElement('script');
+      mc.type = 'text/javascript';
+      mc.async = true;
+      mc.src = '//embed.widgetpack.com/widget.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(mc, s.nextSibling);
+    })();
+  }
+  </script>
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <div id="pjax">
+  
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd0eb41321560dae0a183',
+      clientSecret: 'c3a28c5fc4ff826acd0bc494d58a2fb49615e34c',
+      repo        : 'okJiang.github.io',
+      owner       : 'okJiang',
+      admin       : ['okJiang'],
+      id          : '41859fae4f090d7bd6eabf02a9109e1c',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+    </div>
+</body>
+</html>

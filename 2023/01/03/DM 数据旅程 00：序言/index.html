@@ -20,15 +20,21 @@
     var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"mac"},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":true,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitalk","storage":true,"lazyload":false,"nav":null,"activeClass":"gitalk"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta property="og:type" content="website">
-<meta property="og:title" content="okJiang">
-<meta property="og:url" content="http://example.com/categories/%E5%B9%B4%E7%BB%88%E6%80%BB%E7%BB%93/index.html">
+  <meta name="description" content="背景在此之前已经有官方很多关于 DM 的优秀文章了，比如  TiDB Ecosystem Tools 原理解读系列（三）TiDB Data Migration 架构设计与实现原理 DM 源码解读  这些文章从原理方面非常详尽地介绍了 DM 的相关功能，是非常好的学习资料。但是">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DM 数据旅程 00：序言">
+<meta property="og:url" content="http://example.com/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2000%EF%BC%9A%E5%BA%8F%E8%A8%80/index.html">
 <meta property="og:site_name" content="okJiang">
+<meta property="og:description" content="背景在此之前已经有官方很多关于 DM 的优秀文章了，比如  TiDB Ecosystem Tools 原理解读系列（三）TiDB Data Migration 架构设计与实现原理 DM 源码解读  这些文章从原理方面非常详尽地介绍了 DM 的相关功能，是非常好的学习资料。但是">
 <meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-01-03T13:46:52.000Z">
+<meta property="article:modified_time" content="2023-01-03T14:46:47.148Z">
 <meta property="article:author" content="okJiang">
+<meta property="article:tag" content="DM">
+<meta property="article:tag" content="源码阅读">
 <meta name="twitter:card" content="summary">
 
-<link rel="canonical" href="http://example.com/categories/%E5%B9%B4%E7%BB%88%E6%80%BB%E7%BB%93/">
+<link rel="canonical" href="http://example.com/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2000%EF%BC%9A%E5%BA%8F%E8%A8%80/">
 
 
 <script id="page-configurations">
@@ -36,12 +42,12 @@
   CONFIG.page = {
     sidebar: "",
     isHome : false,
-    isPost : false,
+    isPost : true,
     lang   : 'zh-CN'
   };
 </script>
 
-  <title>分类: 年终总结 | okJiang</title>
+  <title>DM 数据旅程 00：序言 | okJiang</title>
   
 
 
@@ -173,57 +179,165 @@
         <div class="content-wrap">
           
 
-          <div class="content category">
+          <div class="content post posts-expand">
             
 
+    
   
   
-  
-  <div class="post-block">
-    <div class="posts-collapse">
-      <div class="collection-title">
-        <h2 class="collection-header">年终总结
-          <small>分类</small>
-        </h2>
-      </div>
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2000%EF%BC%9A%E5%BA%8F%E8%A8%80/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.JPG">
+      <meta itemprop="name" content="okJiang">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="okJiang">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          DM 数据旅程 00：序言
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2023-01-03 21:46:52 / 修改时间：22:46:47" itemprop="dateCreated datePublished" datetime="2023-01-03T21:46:52+08:00">2023-01-03</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/DM-%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B/" itemprop="url" rel="index"><span itemprop="name">DM 数据旅程</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>938</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>2 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
 
       
-    <div class="collection-year">
-      <span class="collection-header">2023</span>
+        <h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>在此之前已经有官方很多关于 DM 的优秀文章了，比如</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://pingcap.com/zh/blog/tidb-ecosystem-tools-3">TiDB Ecosystem Tools 原理解读系列（三）TiDB Data Migration 架构设计与实现原理</a></li>
+<li><a target="_blank" rel="noopener" href="https://pingcap.com/zh/blog?tag=DM%20%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB">DM 源码解读</a></li>
+</ul>
+<p>这些文章从原理方面非常详尽地介绍了 DM 的相关功能，是非常好的学习资料。但是</p>
+<span id="more"></span>
+
+<ul>
+<li>它讲述的内容跨度较大，对读者有一定的门槛，<a target="_blank" rel="noopener" href="https://pingcap.com/zh/blog/dm-source-code-reading-1#%E8%83%8C%E6%99%AF%E7%9F%A5%E8%AF%86">DM 源码阅读系列文章（一）序：背景知识</a></li>
+<li>编辑时间太过久远，已经过去两年多了。DM 新增了一些新特性，对很多旧功能也进行了更新优化。所以原文中有很多内容已经过时（但大部分仍有参考价值）。例如：<a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/pull/540">DM 使用 Dumpling 替换了 MyDumper</a>，<a target="_blank" rel="noopener" href="https://github.com/pingcap/dm/pull/568">新增乐观模式</a>等等。</li>
+</ul>
+<p>而外部的文章则大部分集中在 DM 的使用上而不是实现上。</p>
+<p>基于此，我想开一个坑《DM 数据旅程系列》，每一篇文章将以一个个小功能为线索，带大家理解 DM 中的各种实现。如果要讲的功能太大，也会拆分成小模块放出。每一步都会尽量放出 GitHub 地址，方便大家跟踪学习～</p>
+<blockquote>
+<p>数据旅程出自于龙少 PPT 中提到的用户旅程和数据旅程，指我们可以通过数据（字节）传输的途径。在看一段代码时，我们可以思考这个字节是从哪里来的，到哪里去，作用是什么，通过理解数据旅程来理解整个产品它的深层原理，并且可以通过改变数据规模（提升/降低数据数量级）和场景（不同的时间不同的位置）来理解产品的缺点（bug）。</p>
+</blockquote>
+<blockquote>
+<p>以上都是个人拙见（废话），欢迎提意见～</p>
+</blockquote>
+<p>当然，现在的 DM 正在飞速的发展迭代中，本系列的内容也可能马上就会过时，现在是 2021 年 10 月 31 日，本系列文章预计将会覆盖 DM v5.3.0-vx.x.x 的代码逻辑。</p>
+<p>如果认为文章中有任何可以改进的地方， 欢迎大家提出自己的想法。同样地，因为 DM 还在快速迭代，还有很多地方都有改进的地方，如果大家对代码实现有任何疑问，也都可以去 <a target="_blank" rel="noopener" href="https://github.com/pingcap/ticdc/tree/master/dm">repo</a> 中直接提 issue。</p>
+<h2 id="读者要求"><a href="#读者要求" class="headerlink" title="读者要求"></a>读者要求</h2><ul>
+<li>能看懂 Golang 语法</li>
+<li>了解 grpc、etcd</li>
+</ul>
+<h2 id="计划章节"><a href="#计划章节" class="headerlink" title="计划章节"></a>计划章节</h2><ol>
+<li>Start task</li>
+<li>Stop task</li>
+<li>Pause task</li>
+<li>Resume task</li>
+<li>Full mode（dumpling）</li>
+<li>Incremental mode（syncer）</li>
+<li>Block-allow list</li>
+<li>Binlog-filter</li>
+<li>Enable relay log</li>
+<li>Permistic sharding ddl</li>
+<li>Optimistic sharding ddl</li>
+<li>。。。</li>
+</ol>
+
     </div>
 
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
+    
+    
+    
 
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2023-01-01T20:00:52+08:00"
-              content="2023-01-01">
-          01-01
-        </time>
-      </div>
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/DM/" rel="tag"># DM</a>
+              <a href="/tags/%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/" rel="tag"># 源码阅读</a>
+          </div>
 
-      <div class="post-title">
-          <a class="post-title-link" href="/2023/01/01/2022%E5%B9%B4%E7%BB%88%E6%80%BB%E7%BB%93/" itemprop="url">
-            <span itemprop="name">2022年终总结——幸运开心的一年</span>
-          </a>
-      </div>
-
-    </header>
-  </article>
-
+        
+  <div class="post-widgets">
+    <div class="wp_rating">
+      <div id="wpac-rating"></div>
     </div>
   </div>
-  
-  
-  
 
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/01/2022%E5%B9%B4%E7%BB%88%E6%80%BB%E7%BB%93/" rel="prev" title="2022年终总结——幸运开心的一年">
+      <i class="fa fa-chevron-left"></i> 2022年终总结——幸运开心的一年
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2001%EF%BC%9A%E7%AC%AC%E4%B8%80%E6%AC%A1%20start%20task/" rel="next" title="DM 数据旅程 01：第一次 start task">
+      DM 数据旅程 01：第一次 start task <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
   
 
 
 
           </div>
           
+    <div class="comments" id="gitalk-container"></div>
 
 <script>
   window.addEventListener('tabs:register', () => {
@@ -270,6 +384,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%83%8C%E6%99%AF"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AF%BB%E8%80%85%E8%A6%81%E6%B1%82"><span class="nav-number">2.</span> <span class="nav-text">读者要求</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%A1%E5%88%92%E7%AB%A0%E8%8A%82"><span class="nav-number">3.</span> <span class="nav-text">计划章节</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -500,6 +615,25 @@ window.addEventListener('pjax:success', () => {
 
   
 
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd0eb41321560dae0a183',
+      clientSecret: 'c3a28c5fc4ff826acd0bc494d58a2fb49615e34c',
+      repo        : 'okJiang.github.io',
+      owner       : 'okJiang',
+      admin       : ['okJiang'],
+      id          : '213f3fc285723fd575dcefb6e6f43eb6',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
 
     </div>
 </body>
