@@ -109,58 +109,6 @@
       </tags>
   </entry>
   <entry>
-    <title>DM 数据旅程 00：序言</title>
-    <url>/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2000%EF%BC%9A%E5%BA%8F%E8%A8%80/</url>
-    <content><![CDATA[<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>在此之前已经有官方很多关于 DM 的优秀文章了，比如</p>
-<ul>
-<li><a href="https://pingcap.com/zh/blog/tidb-ecosystem-tools-3">TiDB Ecosystem Tools 原理解读系列（三）TiDB Data Migration 架构设计与实现原理</a></li>
-<li><a href="https://pingcap.com/zh/blog?tag=DM%20%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB">DM 源码解读</a></li>
-</ul>
-<p>这些文章从原理方面非常详尽地介绍了 DM 的相关功能，是非常好的学习资料。但是</p>
-<span id="more"></span>
-
-<ul>
-<li>它讲述的内容跨度较大，对读者有一定的门槛，<a href="https://pingcap.com/zh/blog/dm-source-code-reading-1#%E8%83%8C%E6%99%AF%E7%9F%A5%E8%AF%86">DM 源码阅读系列文章（一）序：背景知识</a></li>
-<li>编辑时间太过久远，已经过去两年多了。DM 新增了一些新特性，对很多旧功能也进行了更新优化。所以原文中有很多内容已经过时（但大部分仍有参考价值）。例如：<a href="https://github.com/pingcap/dm/pull/540">DM 使用 Dumpling 替换了 MyDumper</a>，<a href="https://github.com/pingcap/dm/pull/568">新增乐观模式</a>等等。</li>
-</ul>
-<p>而外部的文章则大部分集中在 DM 的使用上而不是实现上。</p>
-<p>基于此，我想开一个坑《DM 数据旅程系列》，每一篇文章将以一个个小功能为线索，带大家理解 DM 中的各种实现。如果要讲的功能太大，也会拆分成小模块放出。每一步都会尽量放出 GitHub 地址，方便大家跟踪学习～</p>
-<blockquote>
-<p>数据旅程出自于龙少 PPT 中提到的用户旅程和数据旅程，指我们可以通过数据（字节）传输的途径。在看一段代码时，我们可以思考这个字节是从哪里来的，到哪里去，作用是什么，通过理解数据旅程来理解整个产品它的深层原理，并且可以通过改变数据规模（提升/降低数据数量级）和场景（不同的时间不同的位置）来理解产品的缺点（bug）。</p>
-</blockquote>
-<blockquote>
-<p>以上都是个人拙见（废话），欢迎提意见～</p>
-</blockquote>
-<p>当然，现在的 DM 正在飞速的发展迭代中，本系列的内容也可能马上就会过时，现在是 2021 年 10 月 31 日，本系列文章预计将会覆盖 DM v5.3.0-vx.x.x 的代码逻辑。</p>
-<p>如果认为文章中有任何可以改进的地方， 欢迎大家提出自己的想法。同样地，因为 DM 还在快速迭代，还有很多地方都有改进的地方，如果大家对代码实现有任何疑问，也都可以去 <a href="https://github.com/pingcap/ticdc/tree/master/dm">repo</a> 中直接提 issue。</p>
-<h2 id="读者要求"><a href="#读者要求" class="headerlink" title="读者要求"></a>读者要求</h2><ul>
-<li>能看懂 Golang 语法</li>
-<li>了解 grpc、etcd</li>
-</ul>
-<h2 id="计划章节"><a href="#计划章节" class="headerlink" title="计划章节"></a>计划章节</h2><ol>
-<li>Start task</li>
-<li>Stop task</li>
-<li>Pause task</li>
-<li>Resume task</li>
-<li>Full mode（dumpling）</li>
-<li>Incremental mode（syncer）</li>
-<li>Block-allow list</li>
-<li>Binlog-filter</li>
-<li>Enable relay log</li>
-<li>Permistic sharding ddl</li>
-<li>Optimistic sharding ddl</li>
-<li>。。。</li>
-</ol>
-]]></content>
-      <categories>
-        <category>DM 数据旅程</category>
-      </categories>
-      <tags>
-        <tag>DM</tag>
-        <tag>源码阅读</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>DM 数据旅程 01：第一次 start task</title>
     <url>/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2001%EF%BC%9A%E7%AC%AC%E4%B8%80%E6%AC%A1%20start%20task/</url>
     <content><![CDATA[<h2 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h2><p>本文以 start task 为目的，带着读者从 0 到 1 启动一个数据迁移任务，旨在让读者了解到最基础的 DM 逻辑。本文将直接参照集成测试 <a href="https://github.com/pingcap/dm/blob/master/tests/start_task/run.sh#L27-L36">start_task</a> 的过程，从以下几个方面展开：</p>
@@ -277,6 +225,246 @@
 <h2 id="六、结语"><a href="#六、结语" class="headerlink" title="六、结语"></a>六、结语</h2><p>在 unit Process 后，start-task 就结束啦！是不是还意犹未尽呢？到底有哪些 unit 呢？这些 unit 内部到底是怎么 Process 的呢？在后续的文章中会陆续和大家见面哦。</p>
 <p>其实再复读一下全文，我们发现本篇文章并没有太多很难的东西，大部分篇幅都在描述一些「准备活动」，全程用 etcd watch——master 等待 worker 到来、worker 等待 source 到来、source-worker 等待 subtask 到来。等就完事了。</p>
 <p>任何建议和反馈都欢迎告诉我。下期再见！</p>
+]]></content>
+      <categories>
+        <category>DM 数据旅程</category>
+      </categories>
+      <tags>
+        <tag>DM</tag>
+        <tag>源码阅读</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>DM 数据旅程 02：分库分表悲观协调——01准备过程</title>
+    <url>/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2002%EF%BC%9A%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%82%B2%E8%A7%82%E5%8D%8F%E8%B0%83%E2%80%94%E2%80%9401%E5%87%86%E5%A4%87%E8%BF%87%E7%A8%8B/</url>
+    <content><![CDATA[<h2 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h2><p>分库分表的悲观协调方法是 2018 年开发的特性，是 DM 首次支持 MySQL 分库分表的迁移。由于分库分表在各个公司中的应用实在太过广泛，所以只有在支持分库分表迁移后，DM 才有了工程实践的意义，否则只能算作一个玩具。这对 DM 来说意义重大。</p>
+<p>由于悲观协调的内容庞大，本节只讲述悲观协调的准备过程：</p>
+<ul>
+<li>Master 的准备过程</li>
+<li>Worker 的准备过程</li>
+</ul>
+<span id="more"></span>
+
+<p>以及在悲观协调过程中至关重要的结构体：</p>
+<ul>
+<li>Lock</li>
+<li>Info</li>
+<li>Operation</li>
+<li>ShardingMeta</li>
+<li>ShardingGroup</li>
+<li>…</li>
+</ul>
+<blockquote>
+<p>注：为了专注于我们的目的（悲观协调），本文不会对无关代码进行解读</p>
+</blockquote>
+<blockquote>
+<p>这一节外链中的代码，读者可能会产生这个逻辑为什么是这里的疑问。这是因为本节并没有完全按照顺序读代码。所以读者可以仅带着学习的心态阅读本节，暂时不需要知道它为什么在代码的这个地方。在下一节中会顺序阅读代码</p>
+</blockquote>
+<blockquote>
+<p>本节基于 <a href="https://github.com/pingcap/tiflow/tree/release-6.0">DM release-6.0.0</a></p>
+</blockquote>
+<h2 id="二、Master"><a href="#二、Master" class="headerlink" title="二、Master"></a>二、Master</h2><h3 id="1、Pessimist-和-LockKeeper"><a href="#1、Pessimist-和-LockKeeper" class="headerlink" title="1、Pessimist 和 LockKeeper"></a>1、Pessimist 和 LockKeeper</h3><ul>
+<li><a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/server.go#L140">NewPessimist</a>：Pessimist 是 Master 处理悲观协调的结构体，其中最重要的成员是 <code>LockKeeper</code>。</li>
+<li><code>LockKeeper</code> 的作用是管理各种各样的 lock。</li>
+</ul>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// LockKeeper used to keep and handle DDL lock conveniently.</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// The lock information do not need to be persistent, and can be re-constructed from the shard DDL info.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> LockKeeper <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    mu    sync.RWMutex</span><br><span class="line"></span><br><span class="line">    locks <span class="keyword">map</span>[<span class="type">string</span>]*Lock <span class="comment">// lockID -&gt; Lock</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Lock 可以看作是每一个 ddl 影响的库表，这些库表分布在不同的 MySQL/source 中。由于在悲观协调过程中，数据流（binlog 流）不是停滞的，所以在数据流中，会源源不断地出现新 DDL，即新 lock。</li>
+<li>故 <code>LockKeeper</code> 就是管理这些 lock。</li>
+</ul>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// Lock represents the shard DDL lock in memory.</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// This information does not need to be persistent, and can be re-constructed from the shard DDL info.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Lock <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    mu sync.RWMutex</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    ID     <span class="type">string</span>   <span class="comment">// lock&#x27;s ID</span></span><br><span class="line"></span><br><span class="line">    Task   <span class="type">string</span>   <span class="comment">// lock&#x27;s corresponding task name</span></span><br><span class="line"></span><br><span class="line">    Owner  <span class="type">string</span>   <span class="comment">// Owner&#x27;s source ID (not DM-worker&#x27;s name)</span></span><br><span class="line"></span><br><span class="line">    DDLs   []<span class="type">string</span> <span class="comment">// DDL statements</span></span><br><span class="line"></span><br><span class="line">    remain <span class="type">int</span>      <span class="comment">// remain count of sources needed to receive DDL info</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">// whether the DDL info received from the source.</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// if all of them have been ready, then we call the lock `synced`.</span></span><br><span class="line"></span><br><span class="line">    ready <span class="keyword">map</span>[<span class="type">string</span>]<span class="type">bool</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">// whether the operations have done (exec/skip the shard DDL).</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// if all of them have done, then we call the lock `resolved`.</span></span><br><span class="line"></span><br><span class="line">    done <span class="keyword">map</span>[<span class="type">string</span>]<span class="type">bool</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2、Lock"><a href="#2、Lock" class="headerlink" title="2、Lock"></a>2、Lock</h3><ul>
+<li>ID 表现形式为 <a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/pkg/utils/common.go#L223">${task}-${schema}.${table}</a>，从 LockKeeper 的结构可以看到同一任务同一表下只能有一个 lock，如果遇到了不同的 DDL，影响的又是同任务同表，则<a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/pkg/shardddl/pessimism/lock.go#L72-L74">报错</a>。</li>
+<li>DDLs 为什么是 <code>[]string</code>？因为这里是经过 <code>Split</code> 的 DDLs，单条 DDL 可能会被 Split 成多条 DDL。</li>
+<li>Remain 表示剩余的还未收到 DDL 的 source/worker（以下 worker 都表示 source/worker 对）数量。即如果 worker 把这个 Lock 相关的 DDLs（实际上是 info 的形式）发给 master，master 则把 <code>remain --</code>。</li>
+<li>Ready 和 remain 表达相同的意思，remain 即表示 ready 中为 <code>true</code> 的个数</li>
+<li>Done 表示 operation 结束的 worker 的状态</li>
+</ul>
+<blockquote>
+<p>注意：下面说的所有 worker 都 ready 即是 <strong>remain &lt;= 0</strong>，代码中即是 <strong>synced</strong> = true。这里创造的概念过多，应该收束一下，减少代码的理解难度。</p>
+</blockquote>
+<blockquote>
+<p>TODO：可以把代码中的 remain 改成 noReadies；synced 改成 allReady</p>
+</blockquote>
+<h3 id="3、Info"><a href="#3、Info" class="headerlink" title="3、Info"></a>3、Info</h3><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// Info represents the shard DDL information.</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// This information should be persistent in etcd so can be retrieved after the DM-master leader restarted or changed.</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// <span class="doctag">NOTE:</span> `Task` and `Source` are redundant in the etcd key path for convenient.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Info <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    Task   <span class="type">string</span>   <span class="string">`json:&quot;task&quot;`</span>   <span class="comment">// data migration task name</span></span><br><span class="line"></span><br><span class="line">    Source <span class="type">string</span>   <span class="string">`json:&quot;source&quot;`</span> <span class="comment">// upstream source ID</span></span><br><span class="line"></span><br><span class="line">    Schema <span class="type">string</span>   <span class="string">`json:&quot;schema&quot;`</span> <span class="comment">// schema name of the DDL</span></span><br><span class="line"></span><br><span class="line">    Table  <span class="type">string</span>   <span class="string">`json:&quot;table&quot;`</span>  <span class="comment">// table name of the DDL</span></span><br><span class="line"></span><br><span class="line">    DDLs   []<span class="type">string</span> <span class="string">`json:&quot;ddls&quot;`</span>   <span class="comment">// DDL statements</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Info 并没有什么特别的地方，只是用作 worker 通知 master，某 lock ready 的消息。</p>
+<h3 id="4、Operation"><a href="#4、Operation" class="headerlink" title="4、Operation"></a>4、Operation</h3><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// Operation represents a shard DDL coordinate operation.</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// This information should be persistent in etcd so can be retrieved after the DM-master leader restarted or changed.</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// <span class="doctag">NOTE:</span> `Task` and `Source` are redundant in the etcd key path for convenient.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Operation <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    ID     <span class="type">string</span>   <span class="string">`json:&quot;id&quot;`</span>     <span class="comment">// the corresponding DDL lock ID</span></span><br><span class="line"></span><br><span class="line">    Task   <span class="type">string</span>   <span class="string">`json:&quot;task&quot;`</span>   <span class="comment">// data migration task name</span></span><br><span class="line"></span><br><span class="line">    Source <span class="type">string</span>   <span class="string">`json:&quot;source&quot;`</span> <span class="comment">// upstream source ID</span></span><br><span class="line"></span><br><span class="line">    DDLs   []<span class="type">string</span> <span class="string">`json:&quot;ddls&quot;`</span>   <span class="comment">// DDL statements</span></span><br><span class="line"></span><br><span class="line">    Exec   <span class="type">bool</span>     <span class="string">`json:&quot;exec&quot;`</span>   <span class="comment">// execute or skip the DDL statements</span></span><br><span class="line"></span><br><span class="line">    Done   <span class="type">bool</span>     <span class="string">`json:&quot;done&quot;`</span>   <span class="comment">// whether the `Exec` operation has done</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">// only used to report to the caller of the watcher, do not marsh it.</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// if it&#x27;s true, it means the Operation has been deleted in etcd.</span></span><br><span class="line"></span><br><span class="line">    IsDeleted <span class="type">bool</span> <span class="string">`json:&quot;-&quot;`</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Exec：是 master 向 worker 发送消息时所用到的字段。它告知该 worker 是否需要执行 DDL，只需要 owner 执行 DDL</li>
+<li>Done：是 worker 向 master 发送消息时所用到的字段。它告知 master 该 worker done 了。done 并不代表该 worker 执行了 DDL，而是表示一种状态，因为只有 owner 可以执行 DDL，non-owner done 可以当作 non-worker 接受到了 DDL 已执行的信息的确认。</li>
+</ul>
+<h3 id="3、Start"><a href="#3、Start" class="headerlink" title="3、Start"></a>3、Start</h3><blockquote>
+<p>以下可以直接在代码中搜索对应的名字，请务必与对应代码一起阅读！</p>
+</blockquote>
+<ul>
+<li><p>s.pessimist.Start</p>
+</li>
+<li><p>p.run</p>
+<ul>
+<li><p>watchInfoOperation</p>
+<ul>
+<li><p>pessimism.WatchInfoPut：等待 worker 发送 info</p>
+</li>
+<li><p>p.handleInfoPut：</p>
+<ul>
+<li>收到 Worker 发送的 info 之后，意味着该 worker <a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/pkg/shardddl/pessimism/lock.go#L87-L88">已 ready</a></li>
+<li>如果这个时候所有的 source/worker 都 <a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L486">ready（synced）</a> 了，则可以<a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L602-L611">发送一个 exec operation 给该 lock 的 owner</a>（第一个<a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/pkg/shardddl/pessimism/keeper.go#L49">创建 lock</a> 的 worker）</li>
+</ul>
+</li>
+<li><p>pessimism.WatchOperationPut：</p>
+<ul>
+<li>等待 worker 发送 operation done。</li>
+<li>这里的 operation 和 上面发送的 operation 其实是一样的，这里监听的没有指定 <a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L192">task 和 source</a>，上面发送的 operation 是<a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L604">指定 task 和 source</a> 的。所以上面发送的 operation 这里也会监听到，</li>
+</ul>
+</li>
+<li><p>p.handleOperationPut：</p>
+<ul>
+<li><p>收到 <a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L509-L512">not done </a>operation 这里并不进行操作。即上面发送 exec operation 的时候没有 done。</p>
+</li>
+<li><p>当收到 operation is done 时，才进行一系列操作。即从 worker 发送过来的 done operation。</p>
+<ul>
+<li>首先 markDone</li>
+<li>如果是 owner done 了，还会对 non-owner 发送 <a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L553">exec operation</a>，督促 non-owner done</li>
+<li>如果所有的 worker 都 done 了（即 resolved），则<a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L533">把 lock 释放</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>错误处理</p>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="三、Worker"><a href="#三、Worker" class="headerlink" title="三、Worker"></a>三、Worker</h2><h3 id="1、Pessimist"><a href="#1、Pessimist" class="headerlink" title="1、Pessimist"></a>1、Pessimist</h3><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// Pessimist used to coordinate the shard DDL migration in pessimism mode.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Pessimist <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    mu sync.RWMutex</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    logger log.Logger</span><br><span class="line"></span><br><span class="line">    cli    *clientv3.Client</span><br><span class="line"></span><br><span class="line">    task   <span class="type">string</span></span><br><span class="line"></span><br><span class="line">    source <span class="type">string</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">// the shard DDL info which is pending to handle.</span></span><br><span class="line"></span><br><span class="line">    pendingInfo *pessimism.Info</span><br><span class="line"></span><br><span class="line">    <span class="comment">// the shard DDL lock operation which is pending to handle.</span></span><br><span class="line"></span><br><span class="line">    pendingOp *pessimism.Operation</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L252">NewPessimist</a>：worker 中的 pessimist 不同于 master 中的 pessimist。它只保存了 <code>pendingInfo</code> 和 <code>pendingOp</code>，用于保存当前的 Info 和 Operation</li>
+</ul>
+<h3 id="2、ShardingGroupKeeper"><a href="#2、ShardingGroupKeeper" class="headerlink" title="2、ShardingGroupKeeper"></a>2、ShardingGroupKeeper</h3><ul>
+<li><a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L277">NewShardingGroupKeeper</a>：其中最重要的结构体就是 <code>shardingGroup</code>。<code>shardingGroup</code> 和 master 中的 <code>Lock</code> 类似，也是用于管理 DDL 影响到的 table（在 Lock 中是 source/worker）。</li>
+</ul>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// ShardingGroupKeeper used to keep ShardingGroup.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> ShardingGroupKeeper <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    sync.RWMutex</span><br><span class="line"></span><br><span class="line">    groups <span class="keyword">map</span>[<span class="type">string</span>]*ShardingGroup <span class="comment">// target table ID -&gt; ShardingGroup</span></span><br><span class="line"></span><br><span class="line">    cfg    *config.SubTaskConfig</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    shardMetaSchema    <span class="type">string</span></span><br><span class="line"></span><br><span class="line">    shardMetaTable     <span class="type">string</span></span><br><span class="line"></span><br><span class="line">    shardMetaTableName <span class="type">string</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    db     *conn.BaseDB</span><br><span class="line"></span><br><span class="line">    dbConn *dbconn.DBConn</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    tctx *tcontext.Context</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3、ShardingGroup"><a href="#3、ShardingGroup" class="headerlink" title="3、ShardingGroup"></a>3、ShardingGroup</h3><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// ShardingGroup represents a sharding DDL sync group.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> ShardingGroup <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    sync.RWMutex</span><br><span class="line"></span><br><span class="line">    <span class="comment">// remain count waiting for syncing</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// == len(sources):  DDL syncing not started or resolved</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// == 0: all DDLs synced, will be reset to len(sources) after resolved combining with other dm-workers</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// (0, len(sources)): waiting for syncing</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// <span class="doctag">NOTE:</span> we can make remain to be configurable if needed</span></span><br><span class="line"></span><br><span class="line">    remain       <span class="type">int</span></span><br><span class="line"></span><br><span class="line">    sources      <span class="keyword">map</span>[<span class="type">string</span>]<span class="type">bool</span> <span class="comment">// source table ID -&gt; whether source table&#x27;s DDL synced</span></span><br><span class="line"></span><br><span class="line">    IsSchemaOnly <span class="type">bool</span>            <span class="comment">// whether is a schema (database) only DDL <span class="doctag">TODO:</span> zxc add schema-level syncing support later</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    sourceID <span class="type">string</span>                  <span class="comment">// associate dm-worker source ID</span></span><br><span class="line"></span><br><span class="line">    meta     *shardmeta.ShardingMeta <span class="comment">// sharding sequence meta storage</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    firstLocation    *binlog.Location <span class="comment">// first DDL&#x27;s binlog pos and gtid, used to restrain the global checkpoint when un-resolved</span></span><br><span class="line"></span><br><span class="line">    firstEndLocation *binlog.Location <span class="comment">// first DDL&#x27;s binlog End_log_pos and gtid, used to re-direct binlog streamer after synced</span></span><br><span class="line"></span><br><span class="line">    ddls             []<span class="type">string</span>         <span class="comment">// DDL which current in syncing</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    flavor     <span class="type">string</span></span><br><span class="line"></span><br><span class="line">    enableGTID <span class="type">bool</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Remain 和 Lock 中的 remain 意义完全一样，但是这里指 table 是否 ready（现代码中用的 synced）</li>
+</ul>
+<blockquote>
+<p>whether source table’s DDL synced</p>
+</blockquote>
+<blockquote>
+<p>TODO：应该统一概念，这里也用 ready 表示</p>
+</blockquote>
+<ul>
+<li>sources：和 Lock 中的 ready 类似</li>
+<li>firstLocation/firstEndLocation/ddls：这三个其实在 meta 中都有保存，所以感觉其实没啥用</li>
+<li>meta：里面保存着所有的有用的信息，下面详细说</li>
+</ul>
+<h3 id="4、ShardingMeta"><a href="#4、ShardingMeta" class="headerlink" title="4、ShardingMeta"></a>4、ShardingMeta</h3><p>这些信息会被持久化到磁盘中</p>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// ShardingMeta stores sharding ddl sequence</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// including global sequence and each source&#x27;s own sequence</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// <span class="doctag">NOTE:</span> sharding meta is not thread safe, it must be used in thread safe context.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> ShardingMeta <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    activeIdx <span class="type">int</span>                          <span class="comment">// the first unsynced DDL index</span></span><br><span class="line"></span><br><span class="line">    global    *ShardingSequence            <span class="comment">// merged sharding sequence of all source tables</span></span><br><span class="line"></span><br><span class="line">    sources   <span class="keyword">map</span>[<span class="type">string</span>]*ShardingSequence <span class="comment">// source table ID -&gt; its sharding sequence</span></span><br><span class="line"></span><br><span class="line">    tableName <span class="type">string</span>                       <span class="comment">// table name (with schema) used in downstream meta db</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    enableGTID <span class="type">bool</span> <span class="comment">// whether enableGTID, used to compare location</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>activeIdx：表示当前活跃的 DDL 下标，即现在被哪个 DDL 卡住了</li>
+<li>global：表示全局的 DDL 序列，即所有 table 中最长的</li>
+<li>sources：表示各个 table 的 DDL 序列</li>
+</ul>
+<h3 id="5、ShardingSequence-和-DDLItem"><a href="#5、ShardingSequence-和-DDLItem" class="headerlink" title="5、ShardingSequence 和 DDLItem"></a>5、ShardingSequence 和 DDLItem</h3><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// ShardingSequence records a list of DDLItem.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> ShardingSequence <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    Items []*DDLItem <span class="string">`json:&quot;items&quot;`</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// DDLItem records ddl information used in sharding sequence organization.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> DDLItem <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    FirstLocation binlog.Location <span class="string">`json:&quot;-&quot;`</span>      <span class="comment">// first DDL&#x27;s binlog Pos, not the End_log_pos of the event</span></span><br><span class="line"></span><br><span class="line">    DDLs          []<span class="type">string</span>        <span class="string">`json:&quot;ddls&quot;`</span>   <span class="comment">// DDLs, these ddls are in the same QueryEvent</span></span><br><span class="line"></span><br><span class="line">    Source        <span class="type">string</span>          <span class="string">`json:&quot;source&quot;`</span> <span class="comment">// source table ID</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">// just used for json&#x27;s marshal and unmarshal, because gtid.Set in FirstLocation is interface,</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// can&#x27;t be marshal and unmarshal</span></span><br><span class="line"></span><br><span class="line">    FirstPosition mysql.Position <span class="string">`json:&quot;first-position&quot;`</span></span><br><span class="line"></span><br><span class="line">    FirstGTIDSet  <span class="type">string</span>         <span class="string">`json:&quot;first-gtid-set&quot;`</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里的 DDLItem 和 Lock 中的 []DDL 其实是一样的，可以看到一个 DDLItem 中也包含多个 DDL。但是这里的 DDLItem 中封装了更多的信息：</p>
+<blockquote>
+<p>DDLs []string `json:”ddls”` // DDLs, these ddls are in the same QueryEvent</p>
+</blockquote>
+<ul>
+<li>FirstLocation：DDL 开始的位点，主要用于识别该 DDL 之前是否来过了。</li>
+</ul>
+<h3 id="6、Init"><a href="#6、Init" class="headerlink" title="6、Init"></a>6、Init</h3><ul>
+<li>s.sgk.Init()：在下游创建库表 <code>dm_meta.($task)_syncer_sharding_meta</code></li>
+<li>s.initShardingGroups</li>
+</ul>
+<blockquote>
+<p>TODO：可用 <code>utils.FetchTargetDoTables()</code> 替换 <code>fromDB.FetchAllDoTables</code></p>
+</blockquote>
+<ol>
+<li>s.sgk.LoadShardMeta：把数据读出来，存到内存里</li>
+<li>s.sgk.AddGroup：把 ShardingGroup 恢复</li>
+</ol>
+<ul>
+<li>Reset</li>
+</ul>
+<h3 id="7、Start"><a href="#7、Start" class="headerlink" title="7、Start"></a>7、Start</h3><ul>
+<li>启动 syncDDL 线程，等待 DDL job</li>
+</ul>
+<h2 id="四、总结"><a href="#四、总结" class="headerlink" title="四、总结"></a>四、总结</h2><p>本小节主要介绍了在悲观协调中：</p>
+<ul>
+<li>会用到的各种数据结构</li>
+<li>Master 运行了几个线程，等待 worker 中信息的来临</li>
+<li>Worker 运行了 syncDDL 线程，等待着 DDL 到来</li>
+</ul>
+<p>这一节中，罗列了特别多的概念，看不懂是正常的！在下一节，将从 worker 接受到一条 DDL 开始，直到这条 DDL 的 lock 解除的过程。在这个过程中，我们来学习这些结构体到底是怎么用的。</p>
+<blockquote>
+<p>抱歉第二章就是悲观协调这个功能😂，本来想让系列文章的难度更加平滑一点的，但是人太懒了一拖再拖😂。为了避免再拖下去，先把写了的存货发出来吧！</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>DM 数据旅程</category>
+      </categories>
+      <tags>
+        <tag>DM</tag>
+        <tag>源码阅读</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>DM 数据旅程 00：序言</title>
+    <url>/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2000%EF%BC%9A%E5%BA%8F%E8%A8%80/</url>
+    <content><![CDATA[<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>在此之前已经有官方很多关于 DM 的优秀文章了，比如</p>
+<ul>
+<li><a href="https://pingcap.com/zh/blog/tidb-ecosystem-tools-3">TiDB Ecosystem Tools 原理解读系列（三）TiDB Data Migration 架构设计与实现原理</a></li>
+<li><a href="https://pingcap.com/zh/blog?tag=DM%20%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB">DM 源码解读</a></li>
+</ul>
+<p>这些文章从原理方面非常详尽地介绍了 DM 的相关功能，是非常好的学习资料。但是</p>
+<span id="more"></span>
+
+<ul>
+<li>它讲述的内容跨度较大，对读者有一定的门槛，<a href="https://pingcap.com/zh/blog/dm-source-code-reading-1#%E8%83%8C%E6%99%AF%E7%9F%A5%E8%AF%86">DM 源码阅读系列文章（一）序：背景知识</a></li>
+<li>编辑时间太过久远，已经过去两年多了。DM 新增了一些新特性，对很多旧功能也进行了更新优化。所以原文中有很多内容已经过时（但大部分仍有参考价值）。例如：<a href="https://github.com/pingcap/dm/pull/540">DM 使用 Dumpling 替换了 MyDumper</a>，<a href="https://github.com/pingcap/dm/pull/568">新增乐观模式</a>等等。</li>
+</ul>
+<p>而外部的文章则大部分集中在 DM 的使用上而不是实现上。</p>
+<p>基于此，我想开一个坑《DM 数据旅程系列》，每一篇文章将以一个个小功能为线索，带大家理解 DM 中的各种实现。如果要讲的功能太大，也会拆分成小模块放出。每一步都会尽量放出 GitHub 地址，方便大家跟踪学习～</p>
+<blockquote>
+<p>数据旅程出自于龙少 PPT 中提到的用户旅程和数据旅程，指我们可以通过数据（字节）传输的途径。在看一段代码时，我们可以思考这个字节是从哪里来的，到哪里去，作用是什么，通过理解数据旅程来理解整个产品它的深层原理，并且可以通过改变数据规模（提升/降低数据数量级）和场景（不同的时间不同的位置）来理解产品的缺点（bug）。</p>
+</blockquote>
+<blockquote>
+<p>以上都是个人拙见（废话），欢迎提意见～</p>
+</blockquote>
+<p>当然，现在的 DM 正在飞速的发展迭代中，本系列的内容也可能马上就会过时，现在是 2021 年 10 月 31 日，本系列文章预计将会覆盖 DM v5.3.0-vx.x.x 的代码逻辑。</p>
+<p>如果认为文章中有任何可以改进的地方， 欢迎大家提出自己的想法。同样地，因为 DM 还在快速迭代，还有很多地方都有改进的地方，如果大家对代码实现有任何疑问，也都可以去 <a href="https://github.com/pingcap/ticdc/tree/master/dm">repo</a> 中直接提 issue。</p>
+<h2 id="读者要求"><a href="#读者要求" class="headerlink" title="读者要求"></a>读者要求</h2><ul>
+<li>能看懂 Golang 语法</li>
+<li>了解 grpc、etcd</li>
+</ul>
+<h2 id="计划章节"><a href="#计划章节" class="headerlink" title="计划章节"></a>计划章节</h2><ol>
+<li>Start task</li>
+<li>Stop task</li>
+<li>Pause task</li>
+<li>Resume task</li>
+<li>Full mode（dumpling）</li>
+<li>Incremental mode（syncer）</li>
+<li>Block-allow list</li>
+<li>Binlog-filter</li>
+<li>Enable relay log</li>
+<li>Permistic sharding ddl</li>
+<li>Optimistic sharding ddl</li>
+<li>。。。</li>
+</ol>
 ]]></content>
       <categories>
         <category>DM 数据旅程</category>
@@ -471,194 +659,6 @@
 <li>Skip</li>
 </ul>
 <p>接下来将会开始乐观协调的学习（希望😭</p>
-]]></content>
-      <categories>
-        <category>DM 数据旅程</category>
-      </categories>
-      <tags>
-        <tag>DM</tag>
-        <tag>源码阅读</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>DM 数据旅程 02：分库分表悲观协调——01准备过程</title>
-    <url>/2023/01/03/DM%20%E6%95%B0%E6%8D%AE%E6%97%85%E7%A8%8B%2002%EF%BC%9A%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E6%82%B2%E8%A7%82%E5%8D%8F%E8%B0%83%E2%80%94%E2%80%9401%E5%87%86%E5%A4%87%E8%BF%87%E7%A8%8B/</url>
-    <content><![CDATA[<h2 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h2><p>分库分表的悲观协调方法是 2018 年开发的特性，是 DM 首次支持 MySQL 分库分表的迁移。由于分库分表在各个公司中的应用实在太过广泛，所以只有在支持分库分表迁移后，DM 才有了工程实践的意义，否则只能算作一个玩具。这对 DM 来说意义重大。</p>
-<p>由于悲观协调的内容庞大，本节只讲述悲观协调的准备过程：</p>
-<ul>
-<li>Master 的准备过程</li>
-<li>Worker 的准备过程</li>
-</ul>
-<span id="more"></span>
-
-<p>以及在悲观协调过程中至关重要的结构体：</p>
-<ul>
-<li>Lock</li>
-<li>Info</li>
-<li>Operation</li>
-<li>ShardingMeta</li>
-<li>ShardingGroup</li>
-<li>…</li>
-</ul>
-<blockquote>
-<p>注：为了专注于我们的目的（悲观协调），本文不会对无关代码进行解读</p>
-</blockquote>
-<blockquote>
-<p>这一节外链中的代码，读者可能会产生这个逻辑为什么是这里的疑问。这是因为本节并没有完全按照顺序读代码。所以读者可以仅带着学习的心态阅读本节，暂时不需要知道它为什么在代码的这个地方。在下一节中会顺序阅读代码</p>
-</blockquote>
-<blockquote>
-<p>本节基于 <a href="https://github.com/pingcap/tiflow/tree/release-6.0">DM release-6.0.0</a></p>
-</blockquote>
-<h2 id="二、Master"><a href="#二、Master" class="headerlink" title="二、Master"></a>二、Master</h2><h3 id="1、Pessimist-和-LockKeeper"><a href="#1、Pessimist-和-LockKeeper" class="headerlink" title="1、Pessimist 和 LockKeeper"></a>1、Pessimist 和 LockKeeper</h3><ul>
-<li><a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/server.go#L140">NewPessimist</a>：Pessimist 是 Master 处理悲观协调的结构体，其中最重要的成员是 <code>LockKeeper</code>。</li>
-<li><code>LockKeeper</code> 的作用是管理各种各样的 lock。</li>
-</ul>
-<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// LockKeeper used to keep and handle DDL lock conveniently.</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// The lock information do not need to be persistent, and can be re-constructed from the shard DDL info.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> LockKeeper <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    mu    sync.RWMutex</span><br><span class="line"></span><br><span class="line">    locks <span class="keyword">map</span>[<span class="type">string</span>]*Lock <span class="comment">// lockID -&gt; Lock</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>Lock 可以看作是每一个 ddl 影响的库表，这些库表分布在不同的 MySQL/source 中。由于在悲观协调过程中，数据流（binlog 流）不是停滞的，所以在数据流中，会源源不断地出现新 DDL，即新 lock。</li>
-<li>故 <code>LockKeeper</code> 就是管理这些 lock。</li>
-</ul>
-<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// Lock represents the shard DDL lock in memory.</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// This information does not need to be persistent, and can be re-constructed from the shard DDL info.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Lock <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    mu sync.RWMutex</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    ID     <span class="type">string</span>   <span class="comment">// lock&#x27;s ID</span></span><br><span class="line"></span><br><span class="line">    Task   <span class="type">string</span>   <span class="comment">// lock&#x27;s corresponding task name</span></span><br><span class="line"></span><br><span class="line">    Owner  <span class="type">string</span>   <span class="comment">// Owner&#x27;s source ID (not DM-worker&#x27;s name)</span></span><br><span class="line"></span><br><span class="line">    DDLs   []<span class="type">string</span> <span class="comment">// DDL statements</span></span><br><span class="line"></span><br><span class="line">    remain <span class="type">int</span>      <span class="comment">// remain count of sources needed to receive DDL info</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">// whether the DDL info received from the source.</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// if all of them have been ready, then we call the lock `synced`.</span></span><br><span class="line"></span><br><span class="line">    ready <span class="keyword">map</span>[<span class="type">string</span>]<span class="type">bool</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">// whether the operations have done (exec/skip the shard DDL).</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// if all of them have done, then we call the lock `resolved`.</span></span><br><span class="line"></span><br><span class="line">    done <span class="keyword">map</span>[<span class="type">string</span>]<span class="type">bool</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="2、Lock"><a href="#2、Lock" class="headerlink" title="2、Lock"></a>2、Lock</h3><ul>
-<li>ID 表现形式为 <a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/pkg/utils/common.go#L223">${task}-${schema}.${table}</a>，从 LockKeeper 的结构可以看到同一任务同一表下只能有一个 lock，如果遇到了不同的 DDL，影响的又是同任务同表，则<a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/pkg/shardddl/pessimism/lock.go#L72-L74">报错</a>。</li>
-<li>DDLs 为什么是 <code>[]string</code>？因为这里是经过 <code>Split</code> 的 DDLs，单条 DDL 可能会被 Split 成多条 DDL。</li>
-<li>Remain 表示剩余的还未收到 DDL 的 source/worker（以下 worker 都表示 source/worker 对）数量。即如果 worker 把这个 Lock 相关的 DDLs（实际上是 info 的形式）发给 master，master 则把 <code>remain --</code>。</li>
-<li>Ready 和 remain 表达相同的意思，remain 即表示 ready 中为 <code>true</code> 的个数</li>
-<li>Done 表示 operation 结束的 worker 的状态</li>
-</ul>
-<blockquote>
-<p>注意：下面说的所有 worker 都 ready 即是 <strong>remain &lt;= 0</strong>，代码中即是 <strong>synced</strong> = true。这里创造的概念过多，应该收束一下，减少代码的理解难度。</p>
-</blockquote>
-<blockquote>
-<p>TODO：可以把代码中的 remain 改成 noReadies；synced 改成 allReady</p>
-</blockquote>
-<h3 id="3、Info"><a href="#3、Info" class="headerlink" title="3、Info"></a>3、Info</h3><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// Info represents the shard DDL information.</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// This information should be persistent in etcd so can be retrieved after the DM-master leader restarted or changed.</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// <span class="doctag">NOTE:</span> `Task` and `Source` are redundant in the etcd key path for convenient.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Info <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    Task   <span class="type">string</span>   <span class="string">`json:&quot;task&quot;`</span>   <span class="comment">// data migration task name</span></span><br><span class="line"></span><br><span class="line">    Source <span class="type">string</span>   <span class="string">`json:&quot;source&quot;`</span> <span class="comment">// upstream source ID</span></span><br><span class="line"></span><br><span class="line">    Schema <span class="type">string</span>   <span class="string">`json:&quot;schema&quot;`</span> <span class="comment">// schema name of the DDL</span></span><br><span class="line"></span><br><span class="line">    Table  <span class="type">string</span>   <span class="string">`json:&quot;table&quot;`</span>  <span class="comment">// table name of the DDL</span></span><br><span class="line"></span><br><span class="line">    DDLs   []<span class="type">string</span> <span class="string">`json:&quot;ddls&quot;`</span>   <span class="comment">// DDL statements</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>Info 并没有什么特别的地方，只是用作 worker 通知 master，某 lock ready 的消息。</p>
-<h3 id="4、Operation"><a href="#4、Operation" class="headerlink" title="4、Operation"></a>4、Operation</h3><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// Operation represents a shard DDL coordinate operation.</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// This information should be persistent in etcd so can be retrieved after the DM-master leader restarted or changed.</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// <span class="doctag">NOTE:</span> `Task` and `Source` are redundant in the etcd key path for convenient.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Operation <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    ID     <span class="type">string</span>   <span class="string">`json:&quot;id&quot;`</span>     <span class="comment">// the corresponding DDL lock ID</span></span><br><span class="line"></span><br><span class="line">    Task   <span class="type">string</span>   <span class="string">`json:&quot;task&quot;`</span>   <span class="comment">// data migration task name</span></span><br><span class="line"></span><br><span class="line">    Source <span class="type">string</span>   <span class="string">`json:&quot;source&quot;`</span> <span class="comment">// upstream source ID</span></span><br><span class="line"></span><br><span class="line">    DDLs   []<span class="type">string</span> <span class="string">`json:&quot;ddls&quot;`</span>   <span class="comment">// DDL statements</span></span><br><span class="line"></span><br><span class="line">    Exec   <span class="type">bool</span>     <span class="string">`json:&quot;exec&quot;`</span>   <span class="comment">// execute or skip the DDL statements</span></span><br><span class="line"></span><br><span class="line">    Done   <span class="type">bool</span>     <span class="string">`json:&quot;done&quot;`</span>   <span class="comment">// whether the `Exec` operation has done</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">// only used to report to the caller of the watcher, do not marsh it.</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// if it&#x27;s true, it means the Operation has been deleted in etcd.</span></span><br><span class="line"></span><br><span class="line">    IsDeleted <span class="type">bool</span> <span class="string">`json:&quot;-&quot;`</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>Exec：是 master 向 worker 发送消息时所用到的字段。它告知该 worker 是否需要执行 DDL，只需要 owner 执行 DDL</li>
-<li>Done：是 worker 向 master 发送消息时所用到的字段。它告知 master 该 worker done 了。done 并不代表该 worker 执行了 DDL，而是表示一种状态，因为只有 owner 可以执行 DDL，non-owner done 可以当作 non-worker 接受到了 DDL 已执行的信息的确认。</li>
-</ul>
-<h3 id="3、Start"><a href="#3、Start" class="headerlink" title="3、Start"></a>3、Start</h3><blockquote>
-<p>以下可以直接在代码中搜索对应的名字，请务必与对应代码一起阅读！</p>
-</blockquote>
-<ul>
-<li><p>s.pessimist.Start</p>
-</li>
-<li><p>p.run</p>
-<ul>
-<li><p>watchInfoOperation</p>
-<ul>
-<li><p>pessimism.WatchInfoPut：等待 worker 发送 info</p>
-</li>
-<li><p>p.handleInfoPut：</p>
-<ul>
-<li>收到 Worker 发送的 info 之后，意味着该 worker <a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/pkg/shardddl/pessimism/lock.go#L87-L88">已 ready</a></li>
-<li>如果这个时候所有的 source/worker 都 <a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L486">ready（synced）</a> 了，则可以<a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L602-L611">发送一个 exec operation 给该 lock 的 owner</a>（第一个<a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/pkg/shardddl/pessimism/keeper.go#L49">创建 lock</a> 的 worker）</li>
-</ul>
-</li>
-<li><p>pessimism.WatchOperationPut：</p>
-<ul>
-<li>等待 worker 发送 operation done。</li>
-<li>这里的 operation 和 上面发送的 operation 其实是一样的，这里监听的没有指定 <a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L192">task 和 source</a>，上面发送的 operation 是<a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L604">指定 task 和 source</a> 的。所以上面发送的 operation 这里也会监听到，</li>
-</ul>
-</li>
-<li><p>p.handleOperationPut：</p>
-<ul>
-<li><p>收到 <a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L509-L512">not done </a>operation 这里并不进行操作。即上面发送 exec operation 的时候没有 done。</p>
-</li>
-<li><p>当收到 operation is done 时，才进行一系列操作。即从 worker 发送过来的 done operation。</p>
-<ul>
-<li>首先 markDone</li>
-<li>如果是 owner done 了，还会对 non-owner 发送 <a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L553">exec operation</a>，督促 non-owner done</li>
-<li>如果所有的 worker 都 done 了（即 resolved），则<a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/dm/master/shardddl/pessimist.go#L533">把 lock 释放</a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</li>
-<li><p>错误处理</p>
-</li>
-</ul>
-</li>
-</ul>
-<h2 id="三、Worker"><a href="#三、Worker" class="headerlink" title="三、Worker"></a>三、Worker</h2><h3 id="1、Pessimist"><a href="#1、Pessimist" class="headerlink" title="1、Pessimist"></a>1、Pessimist</h3><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// Pessimist used to coordinate the shard DDL migration in pessimism mode.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Pessimist <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    mu sync.RWMutex</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    logger log.Logger</span><br><span class="line"></span><br><span class="line">    cli    *clientv3.Client</span><br><span class="line"></span><br><span class="line">    task   <span class="type">string</span></span><br><span class="line"></span><br><span class="line">    source <span class="type">string</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">// the shard DDL info which is pending to handle.</span></span><br><span class="line"></span><br><span class="line">    pendingInfo *pessimism.Info</span><br><span class="line"></span><br><span class="line">    <span class="comment">// the shard DDL lock operation which is pending to handle.</span></span><br><span class="line"></span><br><span class="line">    pendingOp *pessimism.Operation</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li><a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L252">NewPessimist</a>：worker 中的 pessimist 不同于 master 中的 pessimist。它只保存了 <code>pendingInfo</code> 和 <code>pendingOp</code>，用于保存当前的 Info 和 Operation</li>
-</ul>
-<h3 id="2、ShardingGroupKeeper"><a href="#2、ShardingGroupKeeper" class="headerlink" title="2、ShardingGroupKeeper"></a>2、ShardingGroupKeeper</h3><ul>
-<li><a href="https://github.com/pingcap/tiflow/blob/release-6.0/dm/syncer/syncer.go#L277">NewShardingGroupKeeper</a>：其中最重要的结构体就是 <code>shardingGroup</code>。<code>shardingGroup</code> 和 master 中的 <code>Lock</code> 类似，也是用于管理 DDL 影响到的 table（在 Lock 中是 source/worker）。</li>
-</ul>
-<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// ShardingGroupKeeper used to keep ShardingGroup.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> ShardingGroupKeeper <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    sync.RWMutex</span><br><span class="line"></span><br><span class="line">    groups <span class="keyword">map</span>[<span class="type">string</span>]*ShardingGroup <span class="comment">// target table ID -&gt; ShardingGroup</span></span><br><span class="line"></span><br><span class="line">    cfg    *config.SubTaskConfig</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    shardMetaSchema    <span class="type">string</span></span><br><span class="line"></span><br><span class="line">    shardMetaTable     <span class="type">string</span></span><br><span class="line"></span><br><span class="line">    shardMetaTableName <span class="type">string</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    db     *conn.BaseDB</span><br><span class="line"></span><br><span class="line">    dbConn *dbconn.DBConn</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    tctx *tcontext.Context</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="3、ShardingGroup"><a href="#3、ShardingGroup" class="headerlink" title="3、ShardingGroup"></a>3、ShardingGroup</h3><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// ShardingGroup represents a sharding DDL sync group.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> ShardingGroup <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    sync.RWMutex</span><br><span class="line"></span><br><span class="line">    <span class="comment">// remain count waiting for syncing</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// == len(sources):  DDL syncing not started or resolved</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// == 0: all DDLs synced, will be reset to len(sources) after resolved combining with other dm-workers</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// (0, len(sources)): waiting for syncing</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// <span class="doctag">NOTE:</span> we can make remain to be configurable if needed</span></span><br><span class="line"></span><br><span class="line">    remain       <span class="type">int</span></span><br><span class="line"></span><br><span class="line">    sources      <span class="keyword">map</span>[<span class="type">string</span>]<span class="type">bool</span> <span class="comment">// source table ID -&gt; whether source table&#x27;s DDL synced</span></span><br><span class="line"></span><br><span class="line">    IsSchemaOnly <span class="type">bool</span>            <span class="comment">// whether is a schema (database) only DDL <span class="doctag">TODO:</span> zxc add schema-level syncing support later</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    sourceID <span class="type">string</span>                  <span class="comment">// associate dm-worker source ID</span></span><br><span class="line"></span><br><span class="line">    meta     *shardmeta.ShardingMeta <span class="comment">// sharding sequence meta storage</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    firstLocation    *binlog.Location <span class="comment">// first DDL&#x27;s binlog pos and gtid, used to restrain the global checkpoint when un-resolved</span></span><br><span class="line"></span><br><span class="line">    firstEndLocation *binlog.Location <span class="comment">// first DDL&#x27;s binlog End_log_pos and gtid, used to re-direct binlog streamer after synced</span></span><br><span class="line"></span><br><span class="line">    ddls             []<span class="type">string</span>         <span class="comment">// DDL which current in syncing</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    flavor     <span class="type">string</span></span><br><span class="line"></span><br><span class="line">    enableGTID <span class="type">bool</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>Remain 和 Lock 中的 remain 意义完全一样，但是这里指 table 是否 ready（现代码中用的 synced）</li>
-</ul>
-<blockquote>
-<p>whether source table’s DDL synced</p>
-</blockquote>
-<blockquote>
-<p>TODO：应该统一概念，这里也用 ready 表示</p>
-</blockquote>
-<ul>
-<li>sources：和 Lock 中的 ready 类似</li>
-<li>firstLocation/firstEndLocation/ddls：这三个其实在 meta 中都有保存，所以感觉其实没啥用</li>
-<li>meta：里面保存着所有的有用的信息，下面详细说</li>
-</ul>
-<h3 id="4、ShardingMeta"><a href="#4、ShardingMeta" class="headerlink" title="4、ShardingMeta"></a>4、ShardingMeta</h3><p>这些信息会被持久化到磁盘中</p>
-<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// ShardingMeta stores sharding ddl sequence</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// including global sequence and each source&#x27;s own sequence</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// <span class="doctag">NOTE:</span> sharding meta is not thread safe, it must be used in thread safe context.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> ShardingMeta <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    activeIdx <span class="type">int</span>                          <span class="comment">// the first unsynced DDL index</span></span><br><span class="line"></span><br><span class="line">    global    *ShardingSequence            <span class="comment">// merged sharding sequence of all source tables</span></span><br><span class="line"></span><br><span class="line">    sources   <span class="keyword">map</span>[<span class="type">string</span>]*ShardingSequence <span class="comment">// source table ID -&gt; its sharding sequence</span></span><br><span class="line"></span><br><span class="line">    tableName <span class="type">string</span>                       <span class="comment">// table name (with schema) used in downstream meta db</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    enableGTID <span class="type">bool</span> <span class="comment">// whether enableGTID, used to compare location</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>activeIdx：表示当前活跃的 DDL 下标，即现在被哪个 DDL 卡住了</li>
-<li>global：表示全局的 DDL 序列，即所有 table 中最长的</li>
-<li>sources：表示各个 table 的 DDL 序列</li>
-</ul>
-<h3 id="5、ShardingSequence-和-DDLItem"><a href="#5、ShardingSequence-和-DDLItem" class="headerlink" title="5、ShardingSequence 和 DDLItem"></a>5、ShardingSequence 和 DDLItem</h3><figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// ShardingSequence records a list of DDLItem.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> ShardingSequence <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    Items []*DDLItem <span class="string">`json:&quot;items&quot;`</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<figure class="highlight go"><table><tr><td class="code"><pre><span class="line"><span class="comment">// DDLItem records ddl information used in sharding sequence organization.</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> DDLItem <span class="keyword">struct</span> &#123;</span><br><span class="line"></span><br><span class="line">    FirstLocation binlog.Location <span class="string">`json:&quot;-&quot;`</span>      <span class="comment">// first DDL&#x27;s binlog Pos, not the End_log_pos of the event</span></span><br><span class="line"></span><br><span class="line">    DDLs          []<span class="type">string</span>        <span class="string">`json:&quot;ddls&quot;`</span>   <span class="comment">// DDLs, these ddls are in the same QueryEvent</span></span><br><span class="line"></span><br><span class="line">    Source        <span class="type">string</span>          <span class="string">`json:&quot;source&quot;`</span> <span class="comment">// source table ID</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">// just used for json&#x27;s marshal and unmarshal, because gtid.Set in FirstLocation is interface,</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// can&#x27;t be marshal and unmarshal</span></span><br><span class="line"></span><br><span class="line">    FirstPosition mysql.Position <span class="string">`json:&quot;first-position&quot;`</span></span><br><span class="line"></span><br><span class="line">    FirstGTIDSet  <span class="type">string</span>         <span class="string">`json:&quot;first-gtid-set&quot;`</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>这里的 DDLItem 和 Lock 中的 []DDL 其实是一样的，可以看到一个 DDLItem 中也包含多个 DDL。但是这里的 DDLItem 中封装了更多的信息：</p>
-<blockquote>
-<p>DDLs []string `json:”ddls”` // DDLs, these ddls are in the same QueryEvent</p>
-</blockquote>
-<ul>
-<li>FirstLocation：DDL 开始的位点，主要用于识别该 DDL 之前是否来过了。</li>
-</ul>
-<h3 id="6、Init"><a href="#6、Init" class="headerlink" title="6、Init"></a>6、Init</h3><ul>
-<li>s.sgk.Init()：在下游创建库表 <code>dm_meta.($task)_syncer_sharding_meta</code></li>
-<li>s.initShardingGroups</li>
-</ul>
-<blockquote>
-<p>TODO：可用 <code>utils.FetchTargetDoTables()</code> 替换 <code>fromDB.FetchAllDoTables</code></p>
-</blockquote>
-<ol>
-<li>s.sgk.LoadShardMeta：把数据读出来，存到内存里</li>
-<li>s.sgk.AddGroup：把 ShardingGroup 恢复</li>
-</ol>
-<ul>
-<li>Reset</li>
-</ul>
-<h3 id="7、Start"><a href="#7、Start" class="headerlink" title="7、Start"></a>7、Start</h3><ul>
-<li>启动 syncDDL 线程，等待 DDL job</li>
-</ul>
-<h2 id="四、总结"><a href="#四、总结" class="headerlink" title="四、总结"></a>四、总结</h2><p>本小节主要介绍了在悲观协调中：</p>
-<ul>
-<li>会用到的各种数据结构</li>
-<li>Master 运行了几个线程，等待 worker 中信息的来临</li>
-<li>Worker 运行了 syncDDL 线程，等待着 DDL 到来</li>
-</ul>
-<p>这一节中，罗列了特别多的概念，看不懂是正常的！在下一节，将从 worker 接受到一条 DDL 开始，直到这条 DDL 的 lock 解除的过程。在这个过程中，我们来学习这些结构体到底是怎么用的。</p>
-<blockquote>
-<p>抱歉第二章就是悲观协调这个功能😂，本来想让系列文章的难度更加平滑一点的，但是人太懒了一拖再拖😂。为了避免再拖下去，先把写了的存货发出来吧！</p>
-</blockquote>
 ]]></content>
       <categories>
         <category>DM 数据旅程</category>
