@@ -799,4 +799,477 @@
         <tag>工作</tag>
       </tags>
   </entry>
+  <entry>
+    <title>Context 随记，对 Context 和 Agent 的思考</title>
+    <url>/2026/09/29/Context%20%E9%9A%8F%E8%AE%B0%EF%BC%8C%E5%AF%B9%20Context%20%E5%92%8C%20Agent%20%E7%9A%84%E6%80%9D%E8%80%83/</url>
+    <content><![CDATA[<h1 id="Context-随记，对-Context-和-Agent-的思考"><a href="#Context-随记，对-Context-和-Agent-的思考" class="headerlink" title="Context 随记，对 Context 和 Agent 的思考"></a>Context 随记，对 Context 和 Agent 的思考</h1><blockquote>
+<p>本文并不推荐 skills，也不推荐工作流</p>
+</blockquote>
+<blockquote>
+<p>本文由 okJiang 和 GPT6-Pro（深度研究），Kimi-K3（画图、润色）合作完成</p>
+</blockquote>
+<h1 id="从-Matt-的-Skill-说起"><a href="#从-Matt-的-Skill-说起" class="headerlink" title="从 Matt 的 Skill 说起"></a>从 Matt 的 Skill 说起</h1><h2 id="初遇-grill-me"><a href="#初遇-grill-me" class="headerlink" title="初遇 grill-me"></a>初遇 <code>grill-me</code></h2><p><code>grill-me</code> 这个 skill 在几个月前一度爆火。我近几个月一直在深度使用其作者 Matt Pocock 的一系列 skills，主要是</p>
+<ul>
+<li><p><code>/grill-with-docs</code></p>
+</li>
+<li><p><code>/wayfinder</code>（后续加入）</p>
+</li>
+<li><p><code>/to-spec</code></p>
+</li>
+<li><p><code>/to-tickets</code></p>
+</li>
+<li><p><code>/implement</code></p>
+</li>
+<li><p><code>/writing-for-agents</code></p>
+</li>
+<li><p>。。。</p>
+</li>
+</ul>
+<p>我在使用期间的感受是，它真正做到了作者提到的 AFK（Away From Keyboard），在你把前序步骤完成之后，键盘敲入 <code>/implement</code>，真的可以双手离开键盘，它可以完成这个任务！按照我们的约定完成！</p>
+<p>在 <code>/grill-me</code> 爆火的那段时间，我看到非常多的人在试用中被折磨，“我被拷打了一百多个问题！”。没错，我也是😭。当时的想法就是，怎么还不结束啊！认真的阅读每一个问题的话，可能一天都回答不完。。。</p>
+<p>它真的能提高我们的效率吗？</p>
+<h2 id="珍贵的-Context-window"><a href="#珍贵的-Context-window" class="headerlink" title="珍贵的 Context window"></a>珍贵的 Context window</h2><p>在多次跑完 <code>/grill-with-docs</code> -&gt; <code>/to-spec</code> -&gt; <code>/to-tickets</code> -&gt; <code>/implement</code> 的流程之后，我逐渐意识到，它在对抗什么，<strong>LLM 最有限的资源 —— context window</strong></p>
+<p>现在已经长期使用 coding agent 的我们都知道了，下面这些问题频繁地在使用过程中骚扰我们：</p>
+<ul>
+<li><p>上下文污染</p>
+</li>
+<li><p>上下文腐化</p>
+</li>
+<li><p>上下文漂移</p>
+</li>
+</ul>
+<p>而 Matt 这一套流程则强调：</p>
+<ol>
+<li><p>使用一个 session 来执行 <code>/grill-with-docs</code> -&gt; <code>/to-spec</code> -&gt; <code>/to-tickets</code></p>
+</li>
+<li><p>分别用不同的 session 来 <code>/implement</code> 各个 ticket</p>
+</li>
+</ol>
+<blockquote>
+<p>简单介绍：</p>
+<p>/grill-xx 会把你提出的问题以 design tree 的形式进行穷举，以让你的这个想法足够地缜密</p>
+<p>/to-spec 则会把 grill 中讨论的结论总结为 spec 的形式</p>
+<p>/to-tickets 则会进一步把 spec 拆分成可以执行的票据</p>
+<p>/implement 让 agent 根据 ticket 和 spec 进行实现和 review</p>
+<p>强烈建议去仔细阅读一遍原始的 SKILL</p>
+</blockquote>
+<p>Matt 经常提到的一个概念是 Smart Zone，通常指：</p>
+<p><strong>一个会话中，上下文还比较短、干净、相关度高时，模型表现最稳定、推理最敏锐的那一段上下文范围。</strong></p>
+<p>他的 AI coding dictionary 把它描述为：会话早期 Agent 比较专注、记忆和指令遵循较好；随着 context 越来越长，会逐渐进入所谓 “Dumb Zone”，出现遗忘、重复犯错、前后矛盾等问题。</p>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line">上下文使用量</span><br><span class="line"><span class="number">0</span> ────────────────────────────────────── 最大 context window</span><br><span class="line">│</span><br><span class="line">│   Smart Zone         过渡区          “Dumb Zone”</span><br><span class="line">│  ██████████████    ▒▒▒▒▒▒▒▒      ░░░░░░░░░░░</span><br><span class="line">│</span><br><span class="line">└─ 清晰、集中                         噪声多、性能下降</span><br></pre></td></tr></table></figure>
+
+<p>这个流程就充分应用了 smart zone，并且刻意地在避免上面提到的各种上下文问题，比如步骤 2 就刻意避开了长段的 grill 文本，而是在新 session 中去实现代码，因为 implement agent 它没有必要去了解那么多的原始问答，那对于 context window 是一种浪费</p>
+<h2 id="新鲜的-Context，Agent-的最爱"><a href="#新鲜的-Context，Agent-的最爱" class="headerlink" title="新鲜的 Context，Agent 的最爱"></a>新鲜的 Context，Agent 的最爱</h2><p><code>/domain-modeling</code> 是 <code>/grill-with-docs</code> 的底层技能，它规定了在 grilling 的过程中，如果涉及到了一些概念/领域术语，它会尝试把它的定义确定下来，记录在 <code>CONTEXT.md</code> 中；假设涉及到了一些关键决策，则会被记录到 <code>ADR.md</code>（架构决策记录） 中。</p>
+<blockquote>
+<p>ADR 是架构决策记录。skill 规定，只有一个决定同时满足下面三点，才应该提议创建 ADR：</p>
+<ul>
+<li><p><strong>难以逆转</strong>——以后改主意有明显成本</p>
+</li>
+<li><p><strong>缺少背景就令人费解</strong>——后来的人会问“为什么要这样做”</p>
+</li>
+<li><p><strong>确实做过取舍</strong>——存在真实可行的替代方案，最终有理由地选了其中一个</p>
+</li>
+</ul>
+<p><code>/grill-with-docs</code> 和 <code>/grill-me</code> 最大的区别就是是否启动 <code>/domain-modeling</code></p>
+</blockquote>
+<figure class="highlight go"><table><tr><td class="code"><pre><span class="line">/</span><br><span class="line">├── CONTEXT-MAP.md</span><br><span class="line">├── docs/adr/                          ← system-wide decisions</span><br><span class="line">└── src/</span><br><span class="line">    ├── ordering/</span><br><span class="line">    │   ├── CONTEXT.md</span><br><span class="line">    │   └── docs/adr/                  ← context-specific decisions</span><br><span class="line">    └── billing/</span><br><span class="line">        ├── CONTEXT.md</span><br><span class="line">        └── docs/adr/</span><br></pre></td></tr></table></figure>
+
+<p>而在使用 Matt 的 grill 技能之前，必须要做的前置操作是 <code>/setup-matt-pocock-skills</code>。它会编写 <code>AGENTS.md</code>，告诉 Agent：</p>
+<ol>
+<li><p>如何使用和找到 CONTEXT.md 和 ADR.md</p>
+</li>
+<li><p>在哪里去创建 /to-spec 和 /to-tickets 的产物，linear 还是 github</p>
+</li>
+</ol>
+<p><strong>这些设置会让你的领域术语、关键决策时刻存放在 repo 中，并且 Agent 在处理问题时永远有办法可以找到它们</strong>。这非常有利于规范 Agent 的行为，以防止 Agent 创造出新的术语让仓库变的一团糟，或者它们自行进行违背决策的操作导致偏离。</p>
+<h2 id="One-session-One-problem"><a href="#One-session-One-problem" class="headerlink" title="One session One problem"></a>One session One problem</h2><p>上面提到的一系列 skills 其实已经可以完成日常工作的闭环了。但对于较大的任务，grilling 实在是太痛苦了，比如最开始提到的，一次完整的 <code>/grill-me</code> 整整拷打了一百多个问题！这甚至可能会触发多次 context compact 以致于丢失上下文。为了应对这种大型问题，Matt 创建了 <code>/wayfinder</code> skill。</p>
+<p>使用 <code>/wayfinder</code> 可以<strong>直接开始一个还没有想清楚的大任务</strong>，它会首先产出一张 map。Map 本身是一系列模糊事项的索引，而不展示所有细节；每个 decision ticket 才保存具体问题与 resolution。一个 session 首先读取 map，需要时再去看某张 ticket 的细节。默认一次 session 只解决一个 decision ticket，research tickets 则可以交给 Agent 并行处理。</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">                     /wayfinder</span><br><span class="line">                        ↓</span><br><span class="line">           明确终点，建立或读取决策地图</span><br><span class="line">                        ↓</span><br><span class="line">               选一张可推进的决策票</span><br><span class="line">                        |</span><br><span class="line">       ┌────────────────┼────────────────┐</span><br><span class="line">       ↓                ↓                ↓</span><br><span class="line">   /grilling        /research       /prototype</span><br><span class="line">       +                │                │</span><br><span class="line">/domain-modeling        │                │</span><br><span class="line">       │                │                │</span><br><span class="line">       └────────────────┼────────────────┘</span><br><span class="line">                        ↓</span><br><span class="line">           记录结论 → 关闭票 → 更新地图</span><br><span class="line">                        ↓</span><br><span class="line">              还有待解决的问题？</span><br><span class="line">               ├─ 有 → 下次会话继续选票</span><br><span class="line">               └─ 无 → 交接后续流程</span><br><span class="line">                         ↓</span><br><span class="line">            /to-spec → /to-tickets → /implement</span><br></pre></td></tr></table></figure>
+
+<p>这和“开一个很长的聊天，把整个项目一直做完”的思路不太一样。</p>
+<ul>
+<li><p>一个 session 结束以后，留下的是已经解决的问题，以及由这个答案暴露出来的新问题。下一个 session 重新读取 map，知道现在走到了哪里，再选择一个可以处理的问题继续。它不需要记得上一次聊天的全过程。</p>
+</li>
+<li><p>一张 closed GitHub Issue 则保存了当前工作的处境：我们试图到哪里，已经决定了什么，还有哪些问题没有答案。依赖关系又告诉后面的 agent，下一步现在到底可以做什么。</p>
+</li>
+</ul>
+<blockquote>
+<p>从这个角度，我开始思考：一个能持续工作的 agent workflow，不应该依赖某个 agent 一直记住所有事情，而应该让一个失忆的新 agent，也能迅速恢复对当前工作的正确理解。</p>
+</blockquote>
+<h1 id="Context-到底是什么？"><a href="#Context-到底是什么？" class="headerlink" title="Context 到底是什么？"></a>Context 到底是什么？</h1><h2 id="Context-是怎样从讨论里发芽的"><a href="#Context-是怎样从讨论里发芽的" class="headerlink" title="Context 是怎样从讨论里发芽的"></a>Context 是怎样从讨论里发芽的</h2><p>一个需求刚开始的时候，很多 context 还没有存在于任何文字中。</p>
+<p><em><strong>它只存在于产品 owner 的判断、偏好、边界感和未言明的假设里面</strong></em>。甚至有些东西，自己也还没有想清楚。</p>
+<p><code>/grill-with-docs</code> 组合了 <code>grilling</code> 和 <code>domain-modeling</code>。Grilling 的核心不是“问很多问题”，而是建立一棵 design tree：只有前置条件已经确定的节点，才进入当前可以讨论的 frontier。用户回答以后，tree 被重新计算，新的问题才出现。Agent 要自己寻找事实，不能把可以查到的问题甩给用户；真正需要取舍的 decisions，才交给用户决定。</p>
+<p><em><strong>这把人脑里隐含的 context 逐渐 externalize。</strong></em></p>
+<p>而 <code>domain-modeling</code> 会在概念刚刚确定时，把它写入 <code>CONTEXT.md</code>。真正不可轻易逆转、没有 context 会令人意外，并且确实经历过 trade-off 的决策，才进入 ADR。</p>
+<p>当然，不是所有问题都能靠讨论得到答案。</p>
+<ul>
+<li><p>有些问题需要 <code>/research</code>。Research 保存的是 evidence：文档怎么说，外部系统实际上怎样工作，有什么限制。<code>/research</code> 后的 Decision 保存的则是面对这些事实，我们决定怎么做。</p>
+</li>
+<li><p>另一些问题，用文字讨论的成本太高，需要 <code>/prototype</code>。一个代码原型可以是为了回答某个问题而写的 throwaway code（随意丢弃的代码）。验证之后，经过确认的决策进入正式实现；prototype 留在对应的 branch，作为可以回头查看的 primary source，再由 issue 留下 pointer。</p>
+</li>
+</ul>
+<p>所以 context 不一定是文字。一个可以运行的 HTML、一段 state machine，可能比一篇文档更有效。</p>
+<blockquote>
+<p>spec、research、prototype、ADR，并不是一堆互相重复的“文档”。它们承担着不同类型的 context，也有不同的生命周期。</p>
+</blockquote>
+<h2 id="Context-的降维"><a href="#Context-的降维" class="headerlink" title="Context 的降维"></a>Context 的降维</h2><p>问题逐渐讨论清楚以后，我们很难一次性把这么多上下文塞到一个 session 里。还要把这些 context 整理成适合 <code>/implement</code> 的形式。</p>
+<ul>
+<li><p><code>/to-spec</code> 把大段 discussion、code exploration、已经作出的 decisions，以及 domain constraints，压缩成实现所需的较短的表述。之前为什么讨论了那么久、查过哪些文件、绕过哪些弯路，不一定都需要出现在 implementation agent 的当前 context 里。</p>
+</li>
+<li><p><code>/to-tickets</code> 再把 spec 转成适合 agent 在一个 fresh context window 就能完成的 vertical slices tickets，并显式记录 blocking edges。</p>
+</li>
+</ul>
+<blockquote>
+<p>垂直切片（vertical slicing）按“一个小而完整、可以验收的功能行为”拆，而不是按“数据库、后端、前端”等技术层拆</p>
+</blockquote>
+<p>所以 ticket 不只是为项目管理服务的。它也可以被理解成一个 context envelope（上下文信封）：给一次相对独立的工作划定范围，让一个新 session 知道自己要完成什么、依赖什么。</p>
+<blockquote>
+<p>HumanLayer 的 Dex Horthy 从另一个方向描述过类似的做法。他们采用 <code>Research → Plan → Implement</code> 的流程，有意识地把搜索、读代码和工具输出等高体积过程，整理成 structured artifacts，让 implementation 从一个较干净的 context window 开始。他把这个过程叫作 intentional compaction。(<a href="https://www.humanlayer.dev/blog/advanced-context-engineering">HumanLayer</a>)</p>
+</blockquote>
+<h2 id="Context-pointer"><a href="#Context-pointer" class="headerlink" title="Context pointer"></a>Context pointer</h2><p>在前面的章节有提到，Agent 可以很方便地查阅 CONTEXT.md 和 ADR 的内容。那么每个新的 agent 是怎么知道它们存在？又怎么知道什么时候应该读？</p>
+<p>Matt 在 <code>/writing-for-agents</code> 里提供了一个很具体的概念：<strong>context pointer</strong>。</p>
+<p>它是在当前 context 中的一小段引用，指向 context window 外面的材料，同时说明“在什么条件下应该去读取它”。Pointer 的措辞会影响 agent 何时读取目标材料，以及是否会可靠地读取。一个重要文档后面只有一个含糊的 pointer，仍然可能导致它没有被用上。</p>
+<p>一个 ADR 可以暂时不在 window 里，但仍然处于 agent 能够找到的范围内。当前只需要保留足够清楚的入口，等任务走到相关部分时，再读取它。</p>
+<p>Matt 对信息的安排也沿着这个思路：当前步骤必须知道的东西直接放在眼前；同一文件中的 reference 按需查阅；只有部分情况才会用到的材料，通过 pointer 逐步展开。放得太多，主要步骤会被淹没；藏得太深，agent 又会错过实际需要的信息。</p>
+<blockquote>
+<p>如何获得这里的最佳实践，需要长时间的实践和测试</p>
+</blockquote>
+<p>这其实就是 skill 的设计理念。我认为 Matt 借鉴了它，然后扩展了它，把它用于所有希望给 Agent 看的文档。</p>
+<blockquote>
+<p><code>/writing-for-agents</code> 之前的名字叫 <code>/writing-great-skills</code></p>
+</blockquote>
+<h2 id="Context-是什么"><a href="#Context-是什么" class="headerlink" title="Context 是什么"></a>Context 是什么</h2><p><em><strong>Context 是一个行动者（Human or Agent）在某一时刻，为了正确理解当前处境并做出下一步行动，能够获得、定位、判断其权威性并使用的全部相关状态。</strong></em></p>
+<p>一张 GitHub Issue 是 context；一个 spec 是 context；一个 prototype branch 是 context；一次失败的实验是 context；一个 ADR 是 context；<code>CONTEXT.md</code> 是 context；tests 是 context；代码本身是 context；目录结构是 context；一个已经关闭的方案同样可能是 context；甚至「这里还有一片我们暂时无法描述清楚的 fog of war」本身，也是在表达 context。</p>
+<p>Matt 的体系真正厉害的地方在于，他实际上在设计一套** context lifecycle：<strong>让信息从</strong>模糊、临时、昂贵的 working context，<strong>逐步沉淀成</strong>结构化、可寻址、低歧义、可被未来 agent 重建的 durable context。**</p>
+<p>总结一下，Context 现在有四个相关的概念</p>
+<ul>
+<li><p><strong>Context window</strong>。它回答模型现在看到什么？这个层面的 context engineering 主要讨论 pruning、compression、tool result formatting、retrieval、summarization、prompt composition。</p>
+</li>
+<li><p><strong>Context field</strong>。它的含义是：当前没有加载，但可以被找回的状态。ADR、GitHub issue、prototype branch、research snapshot 都是这样。</p>
+</li>
+<li><p><strong>Context router</strong>。决定什么信息在什么条件下，以什么粒度，以什么权威级别进入 working context。<code>AGENTS.md</code>、skill descriptions、issue labels、<code>CONTEXT-MAP.md</code>、dependency edges、文件路径约定、tool descriptions，本质上都是这层东西。</p>
+</li>
+<li><p><strong>Context lifecycle</strong>。正确的信息从哪里来？它在什么时候从「探索」变成「决定」？什么时候应该长期保存？什么时候反而应该删除？GitHub Issue、research、prototype、spec、ADR、CONTEXT、tests 就是同一份知识在不同成熟度阶段的不同载体。</p>
+</li>
+</ul>
+<p><img src="/img/post/2026/image.png" alt="Context 概念"></p>
+<h2 id="Context-field-amp-amp-lifecycle"><a href="#Context-field-amp-amp-lifecycle" class="headerlink" title="Context field &amp;&amp; lifecycle"></a>Context field &amp;&amp; lifecycle</h2><p>field 里不同的 context 有什么区别：</p>
+<ul>
+<li><p>地位不同，地位更高的 context 更可信</p>
+</li>
+<li><p>类型不同，不同类型的 context 重要程度不一样，受到的关注也不一样</p>
+</li>
+<li><p>是否经过降维&amp;&amp;压缩，经过降维、压缩的 context 用到的 window 更小，更利于 Agent 使用</p>
+</li>
+<li><p>时效不同，某些 context 应该具有过期时间。</p>
+</li>
+</ul>
+<p>而 context lifecycle 就是一条 context 在地位上移动的路径。没有人能评审一堆 raw material</p>
+<p><img src="/img/post/2026/image-1.png" alt="一条 Context 的一生"></p>
+<h1 id="What-do-we-need"><a href="#What-do-we-need" class="headerlink" title="What do we need"></a>What do we need</h1><h2 id="Definition"><a href="#Definition" class="headerlink" title="Definition"></a>Definition</h2><p>这套东西到底如何抽象，到底给出一个怎样的命名和定义，我想了很久。AI 给出的都是 Context Stack、Context OS、Context System 这种，从语义上确实能概括（毕竟包含了所有），但又总感觉少了点什么。</p>
+<p>一开始确实是一团乱麻的，我首先从这套系统的使用者上作了区分：</p>
+<ul>
+<li><p>系统外</p>
+<ul>
+<li><p>人类可以直接地看到代码、CONTEXT.md、ADR、issues，也可以在这些东西上直接进行修改。但是当人类当前世代真的开始使用这套系统的时候，他在大多数时候，都不应该直接去看。他应该是在与 Agent 协作的时候，Agent 去读取这些 Context field。所以人类直接对接的是 Agent</p>
+</li>
+<li><p>Agent 主要是通过 Context router 按需获取 Context field</p>
+</li>
+</ul>
+</li>
+<li><p>系统内</p>
+<ul>
+<li><p>人类需要 grilling 把自己脑子里未明的假设和 Agent 说清楚；另外需要对 Context field 压缩的结论做 promote，并且需要对此负责</p>
+</li>
+<li><p>Agent 会在系统内充当各种 worker，让 Context field 能够更加自动化地沿着 Context lifecycle 对 Context 进行压缩和降维。</p>
+</li>
+</ul>
+</li>
+</ul>
+<p>所以这个系统要面临的一些挑战就可以抽象出来了：</p>
+<ul>
+<li><p>如何让 Agent 准确地<strong>索引</strong>到必要的 Context field，也就是读取数据的问题</p>
+</li>
+<li><p>如何让 Agent 在系统内合理地进行压缩</p>
+</li>
+<li><p>如何让人类适时地介入 <code>grilling</code> 和 <code>promote</code>，即</p>
+<ul>
+<li><p>输入必要的上下文，以辅助 Agent 能做出正确地判断。判断的过程可以理解为<strong>处理冲突</strong></p>
+</li>
+<li><p>promote 则是在 Context 经过压缩之后，做出的二次确认，判断它是否需要被持久化，持久化后的 Context field 则具有更高的权威性（地位）以及更高的被检索频率。暂且把它称为<strong>两阶段确认</strong></p>
+</li>
+</ul>
+</li>
+</ul>
+<p>这些问题让我突然联想到了 Database，这其实就非常类似于 Database 要解决的问题。所以我想把这个系统称为 <strong>ContextBase</strong>。</p>
+<blockquote>
+<p>果不其然，我不是第一个想到它的。<a href="https://www/.appliedcompute/.com/research/remember/-refine/-retrieve">https://www\.appliedcompute\.com/research/remember\-refine\-retrieve</a> 这篇文章已经提到他们在做一个这样的系统。</p>
+</blockquote>
+<h2 id="原语"><a href="#原语" class="headerlink" title="原语"></a>原语</h2><p>对应于 database 的 insert / select / update / delete 操作，ContextBase 的原语是：</p>
+<p><strong>读（任何 agent 在权限内都能做）：</strong></p>
+<ul>
+<li><code>select(what, authority) → agent</code></li>
+</ul>
+<p><strong>写（Context 地位的变迁）：</strong></p>
+<ul>
+<li><p><code>capture(content, evidence) → draft</code></p>
+</li>
+<li><p><code>insight(context) → human → candidate</code></p>
+</li>
+<li><p><code>promote(candidate) → canonical</code></p>
+</li>
+<li><p><code>supersede(old → new)</code> / <code>retire(address)</code></p>
+</li>
+</ul>
+<h2 id="Context-infrastructure"><a href="#Context-infrastructure" class="headerlink" title="Context infrastructure"></a>Context infrastructure</h2><p>这些 context 就只存在于个人工作中吗？它们难道不是无所不在吗？为什么只是在个人工作中用起来这么顺手呢？特别是在代码开发领域用起来是最丝滑的呢？</p>
+<p>我们简单地把 context 从 codebase 往外推：一个公司、一个团队、一个项目、一段关系这些都是一个 contest system</p>
+<p>就拿组织来说吧，组织真正的 context 往往没有存在正式文档里。它藏在：</p>
+<ul>
+<li><p>这个事平时要找谁；</p>
+</li>
+<li><p>哪些例外是约定俗成的；</p>
+</li>
+<li><p>某个流程为什么长成现在这样；</p>
+</li>
+<li><p>某个客户过去发生过什么；</p>
+</li>
+<li><p>某份合同真正影响哪些业务动作。</p>
+</li>
+</ul>
+<p>Aaron Levie 在谈 enterprise agent 时提到：codebase 开发拥有代码、spec、文档、version control 等高结构化 artifacts；企业其他知识工作里的 context 则散落在会议、权限系统、SaaS、口头沟通和不同格式的数据里。<em><strong>软件开发不自觉地建设了全人类知识工作中最完善的一套 Context Infrastructure。</strong></em>Git、commits、diffs、issues、tests、types、compiler errors、CI、specs、ADRs…… 这些东西在上一个时代叫「软件工程实践」。进入 agent 时代后，它们变成了 <strong>Context Infrastructure。</strong>Git 的 object store 是它的存储，merge 和 review 是它的事务，AGENTS.md 和路径约定是它的 router。Matt 的 skills，是在这个 ContextBase 上跑起来的一组面向 Agent 和人的应用。</p>
+<p>如果脱离代码仓库，把目光投向更广阔的组织和知识工作，就会发现，企业真正依赖的其实是 <strong>human context infrastructure</strong>。</p>
+<p>一个优秀的 manager 或 team lead，大量的工作其实是：参加多个会议，从各处收集信息，理解不同人的隐含背景，压缩成一段能被别人理解的话，告诉团队过去已经决定了什么，解决冲突后再把结论传播回去。也就是说，他们实际上充当了<strong>组织里的人工 cache、router、compressor 和 authority resolver</strong>。其实不止是 manager，普通员工也或多或少是某些 context 的 cache/router/compressor。</p>
+<p>如果我们将 ContextBase 的思想引入组织，那么管理者和员工可以<strong>少做 context courier（上下文搬运工），多做 context governor（上下文治理者）。</strong></p>
+<p>一件事需要 manager 批准，不应该意味着 manager 必须手工把所有 background 搬到自己脑子里。假如组织里有一个这样的 ContextBase，我们就可以轻易获取到必要的 background。</p>
+<h1 id="组织里的-ContextBase"><a href="#组织里的-ContextBase" class="headerlink" title="组织里的 ContextBase"></a>组织里的 ContextBase</h1><p>组织真的需要这样一套东西吗？如果需要，为什么是现在？它会长什么样，组织里的人凭什么会用它？它会把组织、以及组织里的每一种角色变成什么样？以及它真的造得出来吗？</p>
+<h2 id="凄惨的现状"><a href="#凄惨的现状" class="headerlink" title="凄惨的现状"></a>凄惨的现状</h2><p>在讨论组织形态之前，先停下来回答一个更基础的问题：上面提到的这些东西——Git、commits、diffs、issues、tests、types、compiler errors、CI、specs、ADRs——在组织里到底对应什么？</p>
+<p>首先这些全不是为 AI 发明的。 Git 是为了让几千个互不信任的开发者协作；tests 是因为人会犯错；CI 是因为人会忘记跑 tests；ADR 是因为人会离开，而理由不能跟着离开。它们是对人类弱点——遗忘、懒惰、不可靠——的补偿机制。也正因为它们补偿的是“人”的弱点，agent 才意外地继承了一个早已为人类弱点打好补丁的世界。</p>
+<p>组织当然也有同样的需求，只不过组织没有用一套固定流程来解决，而是用<strong>人肉与机制</strong>来代偿：</p>
+<table>
+<thead>
+<tr>
+<th>软件世界</th>
+<th>在解决什么问题</th>
+<th>组织</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Git / repo</td>
+<td>当前事实需要唯一、可寻址、带完整历史的家</td>
+<td>制度汇编 + 档案室 + 聊天记录 + 几个老员工的大脑；没有 main branch，人人手里一个互不同步的 fork</td>
+</tr>
+<tr>
+<td>commit</td>
+<td>状态变更应是带作者、时间与 message 的原子事务</td>
+<td>会议上的一句 “那就这么定了”，微信里的一个 “👌”；大多数决定从未被 commit</td>
+</tr>
+<tr>
+<td>diff</td>
+<td>精确回答 “到底变了什么”</td>
+<td>新版制度 PDF 群发，差异自己找；或者根本没人发现变了</td>
+</tr>
+<tr>
+<td>issue</td>
+<td>开放问题需要可寻址的容器，带状态与 owner</td>
+<td>“这事还没定” 活在某人脑子里；跨部门悬案没有 tracker</td>
+</tr>
+<tr>
+<td>tests</td>
+<td>把 “我们相信世界应当如此” 写成可执行断言</td>
+<td>出事之后的复盘；政策是否被遵守靠抽查</td>
+</tr>
+<tr>
+<td>compiler errors</td>
+<td>在代价最低的时刻（行动前）给出精确反馈</td>
+<td>老员工拍肩膀：“这个不能答应客户”；或者犯错很久之后的追责</td>
+</tr>
+<tr>
+<td>CI</td>
+<td>每次变更后自动跑全套检查，不依赖人记得</td>
+<td>内审、合规抽查、季度 review—— 低频、抽样、滞后</td>
+</tr>
+<tr>
+<td>spec</td>
+<td>把实现契约压缩成低歧义文本</td>
+<td>PRD、SOP，写完即腐化，没人维护</td>
+</tr>
+<tr>
+<td>ADR</td>
+<td>保留 “为什么”，尤其是在结果被遗忘之前</td>
+<td>几乎不存在。“当初为什么这么定” 随老员工的离职一起蒸发</td>
+</tr>
+<tr>
+<td>package manifest</td>
+<td>声明环境由什么构成、依赖什么、如何启动</td>
+<td>入职大礼包、部门 wiki 首页、“有事找谁” 表格 —— 静态且腐化</td>
+</tr>
+</tbody></table>
+<p>现存的大部分职能，组织今天都是靠特定的人来完成的。这就是前文所说的 human context infrastructure。有些对应物今天看似存在——wiki 像 repo，制度汇编像 spec，审计像 CI——但形似而神不似。缺的不是文本，而是生命周期与 authority。</p>
+<h2 id="为什么是现在"><a href="#为什么是现在" class="headerlink" title="为什么是现在"></a>为什么是现在</h2><p>这些需求存在了几十年，为什么一直是人在做，而不是机器？</p>
+<p>是因为执行者发生了变化。软件世界之所以构建了 Context Infra，不是程序员比其他行业更有纪律，而是<strong>软件的执行者是机器</strong>——代码要在一台不懂暗示、没有默契、不记得昨天发生了什么的机器上运行，于是 context 从第一天起就必须机器可读。而组织的执行者一直只有人：人有默契、有记忆、能读空气，所以组织的 context 可以一直 tacit（默许）下去。</p>
+<p><strong>Agent 是进入组织的第一个机器执行者。</strong> 它比编译器聪明得多，但它和编译器一样：不懂暗示，没有默契，不记得昨天。组织的 context 第一次拥有了一个必须机器可读才能工作的消费者。当组织开始邀请 Agent 进入时，要为他们准备一个拎包入住的环境。</p>
+<h2 id="组织的-ContextBase-长什么样"><a href="#组织的-ContextBase-长什么样" class="headerlink" title="组织的 ContextBase 长什么样"></a>组织的 ContextBase 长什么样</h2><p>先来个定义：未来的公司，是<strong>一台持续把事件流编译成 Situation 的机器</strong>——而它的底座，是一套组织级的 ContextBase。可以从三个角度看它：<strong>怎么分层（结构）、归谁所有（治理）、怎么被消费（界面）。</strong></p>
+<p><strong>怎么分层</strong>：</p>
+<ul>
+<li><p>存储层：会议记录、IM 记录、CRM、审批流、文档等</p>
+</li>
+<li><p>routing 层：SOP 里的 trigger、带条件的 pointer</p>
+</li>
+<li><p>事务层：即审批流；</p>
+</li>
+<li><p>接口层：面向 Agent</p>
+</li>
+</ul>
+<p><img src="/img/post/2026/image-2.png" alt="内部架构"></p>
+<p><strong>归谁所有：Domain-owned Context</strong></p>
+<p>借鉴 Data Mesh 的思想，未来的企业不再建立 centralized 的中央知识库，而是转为 <strong>Domain-owned Context</strong>：</p>
+<ul>
+<li><p>Pricing Context 由 RevOps/Finance 部门维护，包含标准化 Terms 与特定客户例外；</p>
+</li>
+<li><p>Product Context 由 PM/Architecture 团队维护，定义领域标准词汇（Glossary）与协议；</p>
+</li>
+<li><p>Customer Context 由 Support/Sales 维护，捕获证据（Evidence）与服务记录。</p>
+</li>
+<li><p>以及更多的 Context 类别和部门</p>
+</li>
+</ul>
+<p>每个 Domain 团队像维护 API 一样维护自己的 Context Product，负责其正确性、有效期限与 Promotion。</p>
+<p><img src="/img/post/2026/image-3.png" alt="Domain-owned Context"></p>
+<p><strong>怎么被消费</strong>：基于 Situation 的工作方式</p>
+<p>跨部门的巨型复杂工作（如大客户续约、产品 launch、监管整改）不再依赖长篇大论的 Status Report。</p>
+<p>团队将使用类似 Wayfinder Map 的 <strong>Situation Map</strong> 来表达当前状态：</p>
+<ul>
+<li><p>Destination：我们要达成的终点；</p>
+</li>
+<li><p>Accepted** **Context：已经确定的条件与政策；</p>
+</li>
+<li><p>Uncertainties / Open Tickets：当前阻碍 progress 的未决问题；</p>
+</li>
+<li><p>Out of Scope：明确不讨论的内容。</p>
+</li>
+</ul>
+<p><img src="/img/post/2026/image-4.png" alt="Situation Map"></p>
+<p>每一个 Agent 或新加入的人员，只需读取这份 Situation Map，就能在短时间内恢复对世界的正确认知，并独立领走一个明确边界的 Ticket 展开工作。这就是 situate 的组织形态<strong>。</strong></p>
+<h2 id="人是懒惰的"><a href="#人是懒惰的" class="headerlink" title="人是懒惰的"></a>人是懒惰的</h2><p>Wiki 坟场、无人问津的知识库、永远停在第一页的 onboarding 文档——它们存在的原因都是：<strong>把维护成本放在自己身上，把收益放在未来和别人身上。</strong> 理性而懒惰的个体做出了完全正确的选择：不维护。</p>
+<p>所以人只会对 ContextBase 做两个交互：</p>
+<ul>
+<li><p>被 grill。系统向人索取 tacit 输入</p>
+</li>
+<li><p>在 gate 签字。人向系统授予 authority</p>
+</li>
+</ul>
+<p>所以 ContextBase 的首条设计理念其实是个行为学问题：<strong>任何依赖人主动维护 context 的设计都会失败</strong>。这可以展开成四条交互原则：</p>
+<ol>
+<li><p>采集是工作的副产品，不是第二份工作</p>
+</li>
+<li><p>只在值得的时刻向人索取注意力</p>
+</li>
+<li><p>Context 来找人，而不是人找 context</p>
+</li>
+<li><p>纠偏即维护</p>
+</li>
+</ol>
+<h2 id="组织、角色与权力的迁移"><a href="#组织、角色与权力的迁移" class="headerlink" title="组织、角色与权力的迁移"></a>组织、角色与权力的迁移</h2><p>假设组织级的 ContextBase 真的建成了。它对组织、对组织里的每个人，意味着什么？</p>
+<ul>
+<li><p>对组织整体</p>
+<ul>
+<li><p><strong>大量协调机制的存在理由消失了</strong>。周报被编译出来的 situation map 替代；对齐会被 glossary 与 canonical context 替代；层层汇报失去了 routing 功能</p>
+</li>
+<li><p><strong>组织获得了“可克隆性”</strong>：任何一个新成员，无论人还是 agent，都能迅速恢复对处境的正确理解。组织不再惧怕离职、轮岗和快速扩张。</p>
+</li>
+<li><p><strong>组织的边界开始松动。</strong>科斯说，企业的边界由协调成本决定：内部协调比市场便宜的事，才值得放进企业内部。当“让一个新成员恢复处境”的成本趋近于零，内部与外部的协调成本被同时压低。未来的组织可能会是一个稳定内核加一圈高流动性的外围，而不是一座围墙。</p>
+</li>
+</ul>
+</li>
+<li><p>对中层管理者</p>
+<ul>
+<li><p>管理工作里很大一部分——找资料、收集状态、重复解释历史、搬运会议结论、手工写周报——会被最先自动化，这部分工作消失就是消失了，不会换个形式回来。剩下的是判断：目标是什么、谁拥有决定权、冲突时牺牲什么、哪个风险值得承担。</p>
+</li>
+<li><p>管理从一种“信息职业”变回一种“判断职业”，<strong>靠信息差生存的管理者会被暴露，靠判断力生存的管理者会被解放</strong>。</p>
+</li>
+</ul>
+</li>
+<li><p>对那些充当人肉基础设施的老员工<strong>。</strong>几十年来，他们的权力和安全感来自“只有我知道”。未来这份资产会充公：对组织是解放，对个人是剥夺。Domain Steward（领域知识管理员）是一条出路：从“垄断记忆的人”变成“治理记忆的人”。</p>
+</li>
+<li><p>对高管，<strong>战略变成可编译的同时，也变得可追责。</strong> Provenance 是双刃剑：功劳有据可查，锅也是。“集体决策”“会上定的”这类免责迷雾消散了。对敢于决策、敢担责的人是利好，对靠模糊生存的人是末日。</p>
+</li>
+<li><p>还会有一些新的角色：<strong>Domain Steward</strong> 负责一个领域的认知质量，<strong>Context Platform Team</strong> 负责这台机器本身，而跨 domain 的语义冲突，需要一种<strong>联邦式治理（Federated Governance）</strong>来裁决。</p>
+</li>
+</ul>
+<p>ContextBase 不会消灭组织的政治、惰性和愚蠢，它会把这些东西从暗处请到明处。</p>
+<h1 id="随笔"><a href="#随笔" class="headerlink" title="随笔"></a>随笔</h1><blockquote>
+<p>正文写完了，接下来是我个人对 memory 和 multi-agent 的理解和感受。全是主观性。</p>
+</blockquote>
+<h2 id="Memory-产品"><a href="#Memory-产品" class="headerlink" title="Memory 产品"></a>Memory 产品</h2><p>我觉得通用的 Memory 产品在当前很难有实质性的突破。</p>
+<p>我认为 Memory 可以分为生活和工作两块，这两块各自覆盖了非常多的场景。但如果把它们混在一起，这种 Agent 或 Memory 产品在当前情况下很难做出来。</p>
+<p>工作需要的上下文实在太多，而且它和日常生活高度独立，没有特别大的关联。工作细节、具体实施、工作流程等 Memory，对日常生活基本没有影响。只有工作最顶层的 context 才和生活相关，比如你在哪家公司、哪个地点上班，上下班时间、加班频率、出差频率，或者能否提前下班接孩子等。这些能与日常生活产生关联的 Memory，其实可以归到生活这一类。</p>
+<p>除此之外，具体怎么工作、工作内容是什么、上下级是谁、上下级之间的性格、如何协作、各自负责什么，这些与生活隔得很远，底层逻辑也完全不同。所以在当前情况下，把生活和工作的 Memory 分开，是更好的选择。工作上的 Memory，本质上是组织 context 的问题，也是多 Agent 协作面临的问题。</p>
+<p>先回过头来看生活上的 Memory。它相当于一个人的记忆外挂，帮我们多提供一个存储记忆的地方。</p>
+<p>生活记忆的获取途径与类别可以这样划分：</p>
+<ol>
+<li><p>社交媒体与生活类 IM（如微信、Telegram、QQ 等）：它们包含了我们大量的生活线上语料和资源，最能代表一个人经历过的 Memory。</p>
+</li>
+<li><p>录音设备（如录音笔）：用来记录日常生活中遇到的事。我们看到、听到、说过的都算记忆，而语音信息非常丰富，处理门槛也相对视觉信息来说较低，很适合用来提取出更完整的个人全貌。</p>
+</li>
+<li><p>电子设备的使用轨迹（手机、电脑、iPad）：所有 APP 和网页的使用轨迹组成了一个人的生活</p>
+</li>
+</ol>
+<p>在具体实现上，很多生活维度需要做抽象，我认为比较重要的是：</p>
+<ul>
+<li><p>人际关系（Relationship）：这是生活中极其重要的一部分。人是社交动物，是一切社交关系的总和。</p>
+</li>
+<li><p>个人画像：从语音或社交媒体物料中提取出个人的性格、说话方式等特征。</p>
+</li>
+</ul>
+<p>生活 Memory 一个非常重要的应用方向是提供 Insight，这能衍生出很多好玩的场景。比如 Relationship Insight：</p>
+<ul>
+<li><p>察觉人际关系中的裂痕，或是发现潜在的发展对象、爱情与挚友。</p>
+</li>
+<li><p>感知身边的信号：挚友遇到了什么困难、需要什么帮助，他们正在释放什么信号。</p>
+</li>
+<li><p>自我关怀：通过你的语言察觉你是否在某一时刻变得脆弱或焦虑。</p>
+</li>
+</ul>
+<p>此时，Agent 就能从这些 Insight 中发掘出有价值的信息，为自己提供支持与帮助，这是非常有趣的方向。</p>
+<h2 id="多-Agent-协作"><a href="#多-Agent-协作" class="headerlink" title="多 Agent 协作"></a>多 Agent 协作</h2><p>我认为多 Agent 协作的实质就是 context 的管理。一个 Agent 与另一个 Agent 对话的质量，会直接影响最终的协作成果。我们在人机对话的过程中，经历了半年到一年的实践，积累了很多 prompt 和 context 管理的经验，但 Agent 本身暂时还没有习得这些能力（未来可能会解决）。在现阶段，Agent 发送对话时不会针对 Agent 的行为模式去思考并调整沟通方式，这非常容易导致上下文污染、上下文漂移等问题。</p>
+<p>因此在当前阶段，人的定位至关重要。一个多 Agent 协作平台的定位核心在于：人处于什么样的位置？比如 Agent 如何向人类汇报、如何进行任务拆分等。</p>
+<p>拿 Raft 举例，每个 Agent 有自己的 workspace，可以上传文件；其他 Agent 只要知道该 workspace，就能查看里面的文件和文档。但问题在于，这类平台虽然把 Agent 当作人，但 Agent 实际上做不到像人一样：</p>
+<ol>
+<li><p>它在对话交互时，无法像人一样根据 prompt 的优缺点去审慎组织和发送消息。</p>
+</li>
+<li><p>它缺乏针对多 Agent 协作的明确训练。虽然大模型厂商（像 OpenAI、Anthropic）在内部拆分 subagent 这类内化行为上有过大量训练、实验和测试，能保证一定质量，但并没有针对 Agent 与 Agent 之间的横向协作做过深度的专项训练。</p>
+</li>
+</ol>
+<p>所以目前像 Raft 这种把 Agent 当作人来运作的多 Agent 平台，存在一些很明显的缺点。未来大模型厂商可能会对特定协作任务进行训练来解决这些问题，但现阶段还要再观察。</p>
+<p>务实一点来看，我更偏向于不把 Agent 当作人的协作平台。比如我们公司有做一个多 Agent 协作平台，主要是把 Agent 作为 implementer（实现者）来执行任务，里面有一个 workflow 的功能我非常看好。这种模式在现阶段能更好地激发 Agent 的能力，同时也能一定程度上保障产出质量。</p>
+<p>但无论是哪一种多 Agent 协作平台的理念，我都觉得组织上的 context（比如 Agent 能访问到的 context 是怎么样的）还是非常重要的。</p>
+<p>如果在协作过程中，不同的 Agent 能以一个 root source 来产生决策、修改策略、更新目标和进展，这样会更好一些：比如有一个统一的 progress、统一的 goal；讨论时也能够依赖一些已经确定下来（起码是人确定下来）的根本原则。在这些基础上再进行讨论，也就是所谓的约束。这种基础约束越精准，那么多 Agent 协作产生的结果往往也会更好。</p>
+<p>其实就像 Raft 团队也发过的一个视频，在维护、迭代和演进多 Agent 协作产品时，本质上是在想让一个更复杂、更不可控但能力强大的 Agent，能够沿着可行轨道到达预期目标。这其实是在控制诸多变量，在约束的多与少之间权衡操作：约束是让效果更好还是偏离？是限制了它的创造力和能力，还是放大了能力让它发散、却又做出了错误抉择？</p>
+<p>这背后的本质问题，可能是 Agent 的能力目前还没有完全具备。但反过来看另一种形态，现在的 Agent 能力其实已经非常强了，只要给予一定约束并进行编排，提高组织效率并没有太大问题。</p>
+<p>不过这里面依然会涉及 context 的问题，也就是前面提到的 context space 的理念：</p>
+<ul>
+<li><p>不同的 Agent 之间如何共享 context</p>
+</li>
+<li><p>context 之间 artifact 的移交与 review</p>
+</li>
+<li><p>人类在哪个节点进行审批</p>
+</li>
+<li><p>人类在哪个阶段输入自己的上下文</p>
+</li>
+</ul>
+<p>多 Agent 协作，不如说是多 Agent + 多 Human 的协作的探索</p>
+<h2 id="人不会被-Agent-“替代”"><a href="#人不会被-Agent-“替代”" class="headerlink" title="人不会被 Agent “替代”"></a>人不会被 Agent “替代”</h2><p>人是他个人过去所有经历的总和，这些经历不可能被穷举，所以每个人都独一无二，每个人都不会被 Agent 替代，因为 Agent 没办法做到和他一模一样。</p>
+<p>思考 Agent 的本质，它其实是一个无状态的执行器，或者说无状态的反馈系统：我们输入什么，它就输出什么，并且必须有输入它才能有输出。现在的 Agent 系统，本质上是利用上了一切它可能用到的 context 去做判断或行动，这其实已经和人非常相似了。但两者的区别在于，输入的 context 永远不可能完全一致，所以输出也永远不可能一模一样。</p>
+<p>再来谈谈蒸馏。我觉得技能的蒸馏并不可怕，工作上技能的蒸馏其实是一种必然：它可以被抽象，且可能存在最佳实践，那就应该被蒸馏让 Agent 使用以提高效率。这是生产力与生产关系的升级，必然会发生，因为人性是偷懒的，资本也是逐利的。</p>
+<p>如何探索并转型到下一代的组织模型（多人多 Agent 协作）是公司能存活下来的关键，也是人能继续存在于公司的关键。</p>
+<h1 id="后记"><a href="#后记" class="headerlink" title="后记"></a>后记</h1><p>在写这篇文章的途中，阿里发布了千问办公，这让我很惊讶。</p>
+<p>我发现他们的“企业上下文”功能和 ContextBase 其实非常类似。而且让我很惊讶的是，他们甚至发布了一个录音硬件，可以直接对人的录音进行实时处理，甚至不落盘，然后直接发送到企业上下文当中。我觉得这个还是挺牛逼的，他们已经做了一定的实践和落地。</p>
+<p>甚至于他们官方微信公众号的标题都和我之前取的一样，叫“Context is all you need”，搞得我很尴尬。</p>
+<p>行吧，这次不嘲讽阿里了。希望阿里可以持续地做下去。</p>
+]]></content>
+      <tags>
+        <tag>工作</tag>
+        <tag>AI</tag>
+      </tags>
+  </entry>
 </search>
